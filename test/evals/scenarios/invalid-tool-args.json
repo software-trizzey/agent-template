@@ -1,0 +1,20 @@
+{
+	"turns": [
+		{
+			"assistantText": null,
+			"toolCall": {
+				"name": "search_web",
+				"args": "query=hello"
+			}
+		},
+		{
+			"assistantText": "I need valid structured arguments before I can call that tool.",
+			"toolCall": null
+		}
+	],
+	"maxTurns": 3,
+	"expected": {
+		"finalAssistantMessage": "I need valid structured arguments before I can call that tool.",
+		"containsFailureCode": "INVALID_TOOL_ARGUMENTS"
+	}
+}

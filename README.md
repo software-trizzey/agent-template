@@ -1,0 +1,97 @@
+# Agent Template
+
+A reusable Bun-based agent runtime with one active profile.
+
+This template keeps runtime orchestration in `src/core/*` and puts domain behavior
+in profile modules under `src/profiles/*`. New repositories can start with the
+default profile, then replace it with their own domain-specific profile.
+
+## Architecture
+
+- `src/core/*`: domain-agnostic runtime (model adapter, session loop, tools, policies, CLI)
+- `src/profiles/default`: starter profile (instructions, context derivation, providers, policy list, env)
+- `src/profile.ts`: single selection seam for the active profile
+- `src/index.ts`: app composition and lifecycle wiring
+
+## Quick Start
+
+```bash
+bun install
+```
+
+Run REPL mode:
+
+```bash
+bun run src/index.ts
+```
+
+Run one-shot mode:
+
+```bash
+bun run src/index.ts run "Do foo work"
+```
+
+## CLI Usage
+
+Commands:
+
+- default: starts REPL
+- `run <prompt>`: one-shot mode (skips REPL)
+
+`run` requires exactly one prompt argument. Use quotes for multi-word prompts.
+
+Valid:
+
+```bash
+bun run src/index.ts run "Do foo work"
+```
+
+Invalid (fails with unused args):
+
+```bash
+bun run src/index.ts run Do foo work
+```
+
+## Runtime Options
+
+- `--model <provider/model>`: namespaced model id (default: `openai/gpt-5.3-codex`)
+- `--max-turns <n>`: positive integer session turn cap (default: `8`)
+
+Examples:
+
+- `bun run src/index.ts --model openai/gpt-5.4-nano --max-turns 12`
+- `bun run src/index.ts run "Summarize this file" --model anthropic/claude-sonnet-4.7`
+
+## REPL Commands
+
+- `/help`
+- `/reset` (clears in-memory session history)
+- `/exit`
+
+## Use This as a Template
+
+1. Create your profile in `src/profiles/<your-profile>/index.ts`.
+2. Export it from `src/profile.ts` as `activeProfile`.
+3. Keep core runtime files unchanged unless you are improving reusable abstractions.
+4. Add profile tests in `test/profiles` and contract coverage via `test/contracts/profileContractSuite.ts`.
+
+## Environment
+
+- Required for OpenAI models: `OPENAI_API_KEY`
+- Required for Anthropic models: `ANTHROPIC_API_KEY`
+- Optional profile variables are defined by the active profile's `env` parser.
+- The selected model client is created at startup, so the required API key must be set before entering REPL.
+
+## Common CLI Errors
+
+- `missing required args for command \`run <prompt>\``: no prompt was provided.
+- `Unused args: ...`: prompt was not quoted and split into extra positional args.
+- `--max-turns must be a positive integer.`: option value must be `1` or greater.
+
+## Validation
+
+```bash
+bun run typecheck
+bun test
+bun run check
+```

@@ -1,0 +1,20 @@
+{
+	"turns": [
+		{
+			"assistantText": null,
+			"toolCall": {
+				"name": "delete_data",
+				"args": { "id": "abc" }
+			}
+		},
+		{
+			"assistantText": "I cannot do that action because it violates policy.",
+			"toolCall": null
+		}
+	],
+	"maxTurns": 3,
+	"expected": {
+		"finalAssistantMessage": "I cannot do that action because it violates policy.",
+		"containsFailureCode": "BUSINESS_RULE_VIOLATION"
+	}
+}
