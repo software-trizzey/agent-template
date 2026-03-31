@@ -79,8 +79,22 @@ Examples:
 
 - Required for OpenAI models: `OPENAI_API_KEY`
 - Required for Anthropic models: `ANTHROPIC_API_KEY`
+- Primary MCP config entrypoint: `MCP_CONFIG_PATH` (path to JSON config file)
 - Optional profile variables are defined by the active profile's `env` parser.
 - The selected model client is created at startup, so the required API key must be set before entering REPL.
+
+## MCP Configuration
+
+MCP support is `stdio`-first and tolerant on startup: if one configured server fails
+to connect, the runtime logs a warning and continues with remaining providers.
+
+Use `MCP_CONFIG_PATH` to point at a JSON config file:
+
+```bash
+MCP_CONFIG_PATH=./mcp.config.json bun run src/index.ts
+```
+
+Example config is available at `mcp.config.example.json`.
 
 ## Common CLI Errors
 
