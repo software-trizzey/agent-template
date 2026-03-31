@@ -3,6 +3,12 @@ export {
 	ActivityEventSchema,
 } from "./activity";
 export {
+	type McpConfig,
+	McpConfigSchema,
+	type McpServerConfig,
+	McpServerConfigSchema,
+} from "./mcp";
+export {
 	type ModelToolDefinition,
 	ModelToolDefinitionSchema,
 	type ModelTurn,

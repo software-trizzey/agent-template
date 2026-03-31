@@ -1,5 +1,11 @@
 export type { ActivityEvent } from "./activity";
 export type {
+	McpConfig,
+	McpServerConfig,
+	NormalizedMcpConfig,
+	NormalizedMcpServerConfig,
+} from "./mcp";
+export type {
 	ModelAdapter,
 	ModelToolDefinition,
 	ModelTurn,
