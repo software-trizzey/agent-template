@@ -70,6 +70,20 @@ Examples:
 
 ## Use This as a Template
 
+Create a new repository from this template and clone it locally:
+
+- Private repo:
+
+```bash
+gh repo create my-new-agent --private --template software-trizzey/agent-template --clone
+```
+
+- Public repo:
+
+```bash
+gh repo create my-new-agent --public --template software-trizzey/agent-template --clone
+```
+
 1. Create your profile in `src/profiles/<your-profile>/index.ts`.
 2. Export it from `src/profile.ts` as `activeProfile`.
 3. Keep core runtime files unchanged unless you are improving reusable abstractions.
