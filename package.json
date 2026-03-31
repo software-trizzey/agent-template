@@ -1,0 +1,31 @@
+{
+	"name": "agent-template",
+	"module": "index.ts",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"dev": "bun --watch src/index.ts",
+		"lint": "bunx @biomejs/biome check .",
+		"format": "bunx @biomejs/biome format .",
+		"check": "bun run lint && bun run format",
+		"typecheck": "bunx tsc --noEmit",
+		"test": "bun test",
+		"test:watch": "bun test --watch",
+		"test:core": "bun test test/core",
+		"test:contracts": "bun test test/contracts test/profiles",
+		"test:evals": "bun test test/evals"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.4.10",
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@anthropic-ai/sdk": "^0.81.0",
+		"cac": "^7.0.0",
+		"openai": "^6.33.0",
+		"zod": "^4.3.6"
+	}
+}
