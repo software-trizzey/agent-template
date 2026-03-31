@@ -1,0 +1,18 @@
+{
+	"version": 1,
+	"servers": [
+		{
+			"id": "filesystem",
+			"transport": "stdio",
+			"command": "bunx",
+			"args": ["@modelcontextprotocol/server-filesystem", "."],
+			"startupTimeoutMs": 15000,
+			"callTimeoutMs": 30000,
+			"maxRetries": 1,
+			"maxDiscoveredTools": 100,
+			"maxArgBytes": 32768,
+			"allowTools": ["*"],
+			"blockTools": []
+		}
+	]
+}

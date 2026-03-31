@@ -1,3 +1,4 @@
+import { createMcpToolProviderFromPath } from "../../core/mcp";
 import type { AgentProfile, ToolProvider } from "../../core/types";
 
 type DefaultProfileContext = {
@@ -6,7 +7,21 @@ type DefaultProfileContext = {
 
 type DefaultProfileEnv = {
 	allowExternalTools: boolean;
+	mcpConfigPath?: string;
 };
+
+function parseOptionalString(value: string | undefined): string | undefined {
+	if (value === undefined) {
+		return undefined;
+	}
+
+	const trimmed = value.trim();
+	if (trimmed.length === 0) {
+		return undefined;
+	}
+
+	return trimmed;
+}
 
 function parseBoolean(value: string | undefined, fallback: boolean): boolean {
 	if (value === undefined) {
@@ -48,8 +63,24 @@ export const defaultProfile: AgentProfile<
 			latestUserText: input.userText.trim(),
 		};
 	},
-	async createProviders(): Promise<ToolProvider[]> {
-		return [createEmptyLocalProvider()];
+	async createProviders(env): Promise<ToolProvider[]> {
+		const providers: ToolProvider[] = [createEmptyLocalProvider()];
+		if (!env.allowExternalTools) {
+			return providers;
+		}
+
+		if (env.mcpConfigPath === undefined) {
+			return providers;
+		}
+
+		const mcpProvider = await createMcpToolProviderFromPath({
+			filePath: env.mcpConfigPath,
+			warn(message): void {
+				process.stderr.write(`[mcp] ${message}\n`);
+			},
+		});
+		providers.push(mcpProvider);
+		return providers;
 	},
 	policies: [],
 	env: {
@@ -62,6 +93,7 @@ export const defaultProfile: AgentProfile<
 					input.DEFAULT_PROFILE_ALLOW_EXTERNAL_TOOLS,
 					true,
 				),
+				mcpConfigPath: parseOptionalString(input.MCP_CONFIG_PATH),
 			};
 		},
 	},
