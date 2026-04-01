@@ -1,6 +1,6 @@
 # Agent Template
 
-A reusable Bun-based agent runtime with one active profile.
+A reusable Bun-based agent runtime that I'm using in different agentic projects/ideas.
 
 This template keeps runtime orchestration in `src/core/*` and puts domain behavior
 in profile modules under `src/profiles/*`. New repositories can start with the
@@ -33,6 +33,11 @@ default profile, then replace it with their own domain-specific profile.
 
 ```bash
 bun install
+```
+
+Copy env variables and add API key for preferred model provider (OpenAI or Anthropic).
+```bash
+cp .env.example .env
 ```
 
 Run REPL mode:
