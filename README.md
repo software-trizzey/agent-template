@@ -82,7 +82,7 @@ Examples:
 
 - `/help`
 - `/reset` (clears in-memory session history)
-- `/exit`
+- `/exit` or `:q`
 
 ## Environment
 

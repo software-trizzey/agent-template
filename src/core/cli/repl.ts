@@ -16,7 +16,7 @@ function parseCommand(value: string): ReplCommand {
 		return { type: "reset" };
 	}
 
-	if (value === "/exit") {
+	if (value === "/exit" || value === ":q") {
 		return { type: "exit" };
 	}
 

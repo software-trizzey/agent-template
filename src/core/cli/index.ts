@@ -30,7 +30,7 @@ export async function runCli(input: {
 				"Commands:",
 				"  /help  Show available commands",
 				"  /reset Clear session history",
-				"  /exit  Exit the REPL",
+				"  /exit, :q  Exit the REPL",
 			].join("\n");
 		},
 	});
