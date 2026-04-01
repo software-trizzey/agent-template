@@ -13,6 +13,22 @@ default profile, then replace it with their own domain-specific profile.
 - `src/profile.ts`: single selection seam for the active profile
 - `src/index.ts`: app composition and lifecycle wiring
 
+## Use This as a Template
+
+1. Create a new repository from this template and clone it:
+
+   - Private: `gh repo create my-new-agent --private --template software-trizzey/agent-template --clone`
+   - Public: `gh repo create my-new-agent --public --template software-trizzey/agent-template --clone`
+
+2. Create your desired agent profile at `src/profiles/<your-profile>/index.ts`.
+3. Export it from `src/profile.ts` as `activeProfile`.
+4. Add profile tests in `test/profiles` and contract coverage in `test/contracts/profileContractSuite.ts`.
+5. Run validation:
+
+   - `bun run typecheck`
+   - `bun test`
+   - `bun run check`
+
 ## Quick Start
 
 ```bash
@@ -67,27 +83,6 @@ Examples:
 - `/help`
 - `/reset` (clears in-memory session history)
 - `/exit`
-
-## Use This as a Template
-
-Create a new repository from this template and clone it locally:
-
-- Private repo:
-
-```bash
-gh repo create my-new-agent --private --template software-trizzey/agent-template --clone
-```
-
-- Public repo:
-
-```bash
-gh repo create my-new-agent --public --template software-trizzey/agent-template --clone
-```
-
-1. Create your profile in `src/profiles/<your-profile>/index.ts`.
-2. Export it from `src/profile.ts` as `activeProfile`.
-3. Keep core runtime files unchanged unless you are improving reusable abstractions.
-4. Add profile tests in `test/profiles` and contract coverage via `test/contracts/profileContractSuite.ts`.
 
 ## Environment
 
