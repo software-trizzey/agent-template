@@ -68,7 +68,10 @@ async function main(): Promise<void> {
 
 		await runCli({
 			args,
-			async runPrompt(prompt, history): Promise<string> {
+			async runPrompt(
+				prompt,
+				history,
+			): Promise<{ output: string; history: typeof history }> {
 				const context = activeProfile.deriveContext({
 					userText: prompt,
 					history: history.map(
@@ -89,7 +92,10 @@ async function main(): Promise<void> {
 					},
 				});
 
-				return result.finalAssistantMessage;
+				return {
+					output: result.finalAssistantMessage,
+					history: result.history,
+				};
 			},
 		});
 	} finally {

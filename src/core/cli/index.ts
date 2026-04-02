@@ -4,14 +4,16 @@ import { runRepl } from "./repl";
 
 export async function runCli(input: {
 	args: CliInvocation;
-	runPrompt: (prompt: string, history: SessionMessage[]) => Promise<string>;
+	runPrompt: (
+		prompt: string,
+		history: SessionMessage[],
+	) => Promise<{ output: string; history: SessionMessage[] }>;
 }): Promise<void> {
 	const history: SessionMessage[] = [];
 	const handlePrompt = async (prompt: string): Promise<string> => {
-		const output = await input.runPrompt(prompt, history);
-		history.push({ role: "user", content: prompt });
-		history.push({ role: "assistant", content: output });
-		return output;
+		const result = await input.runPrompt(prompt, history);
+		history.splice(0, history.length, ...result.history);
+		return result.output;
 	};
 
 	if (input.args.command === "run") {
