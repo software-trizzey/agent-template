@@ -17,6 +17,8 @@ export {
 	ModelTurnSchema,
 	type SessionMessage,
 	SessionMessageSchema,
+	type SessionToolCall,
+	SessionToolCallSchema,
 	type ToolCall,
 	ToolCallSchema,
 } from "./model";

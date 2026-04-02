@@ -11,6 +11,7 @@ export type {
 	ModelTurn,
 	ModelTurnInput,
 	SessionMessage,
+	SessionToolCall,
 	ToolCall,
 } from "./model";
 export type {

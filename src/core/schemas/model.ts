@@ -6,10 +6,17 @@ export const ToolCallSchema = z.object({
 	callId: z.string().optional(),
 });
 
+export const SessionToolCallSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	args: z.unknown(),
+});
+
 export const SessionMessageSchema = z.object({
 	role: z.enum(["user", "assistant", "tool"]),
 	content: z.string(),
 	name: z.string().optional(),
+	toolCall: SessionToolCallSchema.optional(),
 });
 
 export const ModelToolDefinitionSchema = z.object({
@@ -31,6 +38,7 @@ export const ModelTurnSchema = z.object({
 });
 
 export type ToolCall = z.infer<typeof ToolCallSchema>;
+export type SessionToolCall = z.infer<typeof SessionToolCallSchema>;
 export type SessionMessage = z.infer<typeof SessionMessageSchema>;
 export type ModelToolDefinition = z.infer<typeof ModelToolDefinitionSchema>;
 export type ModelTurnInput = z.infer<typeof ModelTurnInputSchema>;

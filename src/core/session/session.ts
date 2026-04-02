@@ -28,6 +28,10 @@ function serializeToolResult(toolName: string, result: unknown): string {
 	});
 }
 
+function generateToolCallId(): string {
+	return `call_${crypto.randomUUID().replaceAll("-", "")}`;
+}
+
 function emitActivity(
 	runtime: RuntimeConfig,
 	event: Parameters<NonNullable<RuntimeConfig["onActivity"]>>[0],
@@ -93,10 +97,26 @@ export function createSessionRunner(dependencies: {
 
 				const toolCall = modelTurn.toolCall;
 				if (toolCall !== null) {
+					const callId =
+						typeof toolCall.callId === "string" && toolCall.callId.length > 0
+							? toolCall.callId
+							: generateToolCallId();
+
+					appendMessage(history, {
+						role: "assistant",
+						content: "",
+						toolCall: {
+							id: callId,
+							name: toolCall.name,
+							args: toolCall.args,
+						},
+					});
+
 					emitActivity(dependencies.runtime, {
 						type: "tool_started",
 						turn,
 						toolName: toolCall.name,
+						callId,
 					});
 
 					const result = await executeToolCall({
@@ -111,13 +131,15 @@ export function createSessionRunner(dependencies: {
 						type: "tool_finished",
 						turn,
 						toolName: toolCall.name,
+						callId,
 						ok: result.ok,
 						code: result.ok ? null : result.code,
+						message: result.ok ? null : result.message,
 					});
 
 					appendMessage(history, {
 						role: "tool",
-						name: toolCall.callId ?? toolCall.name,
+						name: callId,
 						content: serializeToolResult(toolCall.name, result),
 					});
 				}

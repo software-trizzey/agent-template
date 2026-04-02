@@ -3,6 +3,7 @@ import type {
 	ModelTurn,
 	ModelTurnInput,
 	SessionMessage,
+	SessionToolCall,
 	ToolCall,
 } from "../schemas/model";
 import type { UnifiedToolDescriptor } from "./tools";
@@ -12,6 +13,7 @@ export type {
 	ModelTurn,
 	ModelTurnInput,
 	SessionMessage,
+	SessionToolCall,
 	ToolCall,
 };
 
