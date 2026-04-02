@@ -101,5 +101,18 @@ describe("session runner", () => {
 		);
 		expect(result.terminationReason).toBe("max_turns");
 		expect(events.some((event) => event.type === "tool_started")).toBe(true);
+
+		const assistantToolCallEntry = result.history.find(
+			(message) =>
+				message.role === "assistant" && message.toolCall?.name === "search_web",
+		);
+		expect(assistantToolCallEntry).toBeDefined();
+		expect(assistantToolCallEntry?.toolCall?.id.startsWith("call_")).toBe(true);
+
+		const toolOutputEntry = result.history.find(
+			(message) => message.role === "tool",
+		);
+		expect(toolOutputEntry).toBeDefined();
+		expect(toolOutputEntry?.name).toBe(assistantToolCallEntry?.toolCall?.id);
 	});
 });
