@@ -30,6 +30,20 @@ function toAnthropicInputSchema(
 }
 
 function toAnthropicMessage(message: SessionMessage): MessageParam {
+	if (message.role === "assistant" && message.toolCall !== undefined) {
+		return {
+			role: "assistant",
+			content: [
+				{
+					type: "tool_use",
+					id: message.toolCall.id,
+					name: message.toolCall.name,
+					input: message.toolCall.args,
+				},
+			],
+		};
+	}
+
 	if (message.role === "tool") {
 		const toolUseId = message.name?.trim();
 		if (toolUseId !== undefined && toolUseId.length > 0) {

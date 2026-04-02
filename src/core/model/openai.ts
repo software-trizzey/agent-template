@@ -15,13 +15,25 @@ import type {
 import type { UnifiedToolDescriptor } from "../types/tools";
 import { createModelAdapter } from "./adapter";
 import {
+	debugModelIo,
+	findUnmatchedToolOutputCallIds,
 	hideAssistantTextWhenToolCalled,
 	isRecord,
 	parseJsonStringOrRaw,
+	stringifyJsonOrFallback,
 } from "./helpers";
 import { toOpenAIToolParameters } from "./openai-schema";
 
 function toInputItem(message: SessionMessage): ResponseInputItem {
+	if (message.role === "assistant" && message.toolCall !== undefined) {
+		return {
+			type: "function_call",
+			call_id: message.toolCall.id,
+			name: message.toolCall.name,
+			arguments: stringifyJsonOrFallback(message.toolCall.args),
+		};
+	}
+
 	if (message.role === "tool") {
 		return {
 			type: "function_call_output",
@@ -33,12 +45,7 @@ function toInputItem(message: SessionMessage): ResponseInputItem {
 	return {
 		type: "message",
 		role: message.role,
-		content: [
-			{
-				type: "input_text",
-				text: message.content,
-			},
-		],
+		content: message.content,
 	};
 }
 
@@ -112,6 +119,16 @@ export function createOpenAIModelAdapter(input: {
 		},
 		async nextTurn(modelInput: ModelTurnInput): Promise<ModelTurn> {
 			const parsedInput = ModelTurnInputSchema.parse(modelInput);
+			const unmatchedToolOutputCallIds = findUnmatchedToolOutputCallIds(
+				parsedInput.history,
+			);
+			if (unmatchedToolOutputCallIds.length > 0) {
+				debugModelIo(
+					"openai",
+					`history has unmatched tool outputs: ${unmatchedToolOutputCallIds.join(",")}`,
+				);
+			}
+
 			const response = await input.client.responses.create({
 				model: input.model,
 				instructions: parsedInput.instructions,
@@ -129,6 +146,16 @@ export function createOpenAIModelAdapter(input: {
 			const output = Array.isArray(response.output)
 				? (response.output as unknown[])
 				: [];
+			const outputTypes = output
+				.map((item) => {
+					if (!isRecord(item) || typeof item.type !== "string") {
+						return "unknown";
+					}
+
+					return item.type;
+				})
+				.join(",");
+			debugModelIo("openai", `response output item types: ${outputTypes}`);
 
 			return parseModelTurn(outputText, output);
 		},
