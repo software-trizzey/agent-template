@@ -14,13 +14,16 @@ export const ActivityEventSchema = z.discriminatedUnion("type", [
 		type: z.literal("tool_started"),
 		turn: z.number().int().nonnegative(),
 		toolName: z.string(),
+		callId: z.string().optional(),
 	}),
 	z.object({
 		type: z.literal("tool_finished"),
 		turn: z.number().int().nonnegative(),
 		toolName: z.string(),
+		callId: z.string().optional(),
 		ok: z.boolean(),
 		code: ToolFailureCodeSchema.nullable(),
+		message: z.string().nullable().optional(),
 	}),
 ]);
 

@@ -10,13 +10,23 @@ export function formatActivityEvent(event: ActivityEvent): string {
 	}
 
 	if (event.type === "tool_started") {
-		return `[turn ${event.turn}] tool started: ${event.toolName}`;
+		const callIdSuffix =
+			event.callId === undefined ? "" : ` call_id=${event.callId}`;
+		return `[turn ${event.turn}] tool started: ${event.toolName}${callIdSuffix}`;
 	}
 
 	if (event.ok) {
-		return `[turn ${event.turn}] tool finished: ${event.toolName} (ok)`;
+		const callIdSuffix =
+			event.callId === undefined ? "" : ` call_id=${event.callId}`;
+		return `[turn ${event.turn}] tool finished: ${event.toolName} (ok${callIdSuffix})`;
 	}
 
+	const callIdSuffix =
+		event.callId === undefined ? "" : ` call_id=${event.callId}`;
 	const codeSuffix = event.code === null ? "" : ` code=${event.code}`;
-	return `[turn ${event.turn}] tool finished: ${event.toolName} (failed${codeSuffix})`;
+	const messageSuffix =
+		event.message === undefined || event.message === null
+			? ""
+			: ` message=${event.message}`;
+	return `[turn ${event.turn}] tool finished: ${event.toolName} (failed${callIdSuffix}${codeSuffix}${messageSuffix})`;
 }
