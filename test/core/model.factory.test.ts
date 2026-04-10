@@ -1,48 +1,28 @@
 import { describe, expect, test } from "bun:test";
-import type Anthropic from "@anthropic-ai/sdk";
-import type OpenAI from "openai";
 import { createModelAdapterFromSpec } from "../../src/core/model";
 
 describe("createModelAdapterFromSpec", () => {
-	test("creates OpenAI adapter for openai/* models", () => {
-		let openaiCalls = 0;
-		let anthropicCalls = 0;
-
+	test("creates adapter for known provider/model pair", () => {
 		const adapter = createModelAdapterFromSpec({
-			modelSpec: "openai/gpt-5.4-nano",
-			createOpenAIClient() {
-				openaiCalls += 1;
-				return {} as OpenAI;
-			},
-			createAnthropicClient() {
-				anthropicCalls += 1;
-				return {} as Anthropic;
-			},
+			modelSpec: "openai/gpt-5.3-codex",
 		});
 
 		expect(typeof adapter.nextTurn).toBe("function");
-		expect(openaiCalls).toBe(1);
-		expect(anthropicCalls).toBe(0);
 	});
 
-	test("creates Anthropic adapter for anthropic/* models", () => {
-		let openaiCalls = 0;
-		let anthropicCalls = 0;
+	test("throws for unknown provider", () => {
+		expect(() =>
+			createModelAdapterFromSpec({
+				modelSpec: "not-a-provider/model-x",
+			}),
+		).toThrow("Unsupported model provider");
+	});
 
-		const adapter = createModelAdapterFromSpec({
-			modelSpec: "anthropic/claude-sonnet-4.7",
-			createOpenAIClient() {
-				openaiCalls += 1;
-				return {} as OpenAI;
-			},
-			createAnthropicClient() {
-				anthropicCalls += 1;
-				return {} as Anthropic;
-			},
-		});
-
-		expect(typeof adapter.nextTurn).toBe("function");
-		expect(openaiCalls).toBe(0);
-		expect(anthropicCalls).toBe(1);
+	test("throws for unknown model in known provider", () => {
+		expect(() =>
+			createModelAdapterFromSpec({
+				modelSpec: "openai/not-a-real-model",
+			}),
+		).toThrow("No matching model id found");
 	});
 });

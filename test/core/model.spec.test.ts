@@ -16,15 +16,22 @@ describe("parseModelSpec", () => {
 		});
 	});
 
+	test("parses non-hardcoded provider names", () => {
+		expect(parseModelSpec("google/gemini-2.5-pro")).toEqual({
+			provider: "google",
+			modelId: "gemini-2.5-pro",
+		});
+	});
+
 	test("throws for missing provider separator", () => {
 		expect(() => parseModelSpec("gpt-5.4-nano")).toThrow(
 			"Expected format: <provider>/<model>",
 		);
 	});
 
-	test("throws for unsupported provider", () => {
-		expect(() => parseModelSpec("google/gemini-2.5-pro")).toThrow(
-			"Unsupported model provider",
+	test("throws when provider segment is missing", () => {
+		expect(() => parseModelSpec(" /gpt-5.4-nano")).toThrow(
+			"Expected format: <provider>/<model>",
 		);
 	});
 });

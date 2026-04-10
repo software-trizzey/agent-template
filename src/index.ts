@@ -1,5 +1,3 @@
-import Anthropic from "@anthropic-ai/sdk";
-import OpenAI from "openai";
 import { runCli } from "./core/cli";
 import { parseCliArgs } from "./core/cli/args";
 import { formatActivityEvent } from "./core/cli/output";
@@ -9,28 +7,6 @@ import { runSession } from "./core/session";
 import { buildToolRegistry } from "./core/tools/registry";
 import type { RuntimeConfig } from "./core/types";
 import { activeProfile } from "./profile";
-
-function getOpenAIClient(): OpenAI {
-	const apiKey = process.env.OPENAI_API_KEY;
-	if (apiKey === undefined || apiKey.trim().length === 0) {
-		throw new Error(
-			"OPENAI_API_KEY is required. Set it in your environment or .env file.",
-		);
-	}
-
-	return new OpenAI({ apiKey });
-}
-
-function getAnthropicClient(): Anthropic {
-	const apiKey = process.env.ANTHROPIC_API_KEY;
-	if (apiKey === undefined || apiKey.trim().length === 0) {
-		throw new Error(
-			"ANTHROPIC_API_KEY is required for anthropic/* models. Set it in your environment or .env file.",
-		);
-	}
-
-	return new Anthropic({ apiKey });
-}
 
 async function main(): Promise<void> {
 	const args = parseCliArgs(process.argv.slice(2));
@@ -62,8 +38,6 @@ async function main(): Promise<void> {
 
 		const model = createModelAdapterFromSpec({
 			modelSpec: runtime.model,
-			createOpenAIClient: getOpenAIClient,
-			createAnthropicClient: getAnthropicClient,
 		});
 
 		await runCli({

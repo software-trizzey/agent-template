@@ -35,7 +35,7 @@ default profile, then replace it with their own domain-specific profile.
 bun install
 ```
 
-Copy env variables and add API key for preferred model provider (OpenAI or Anthropic).
+Copy env variables and add API key for whichever provider your `--model <provider/model>` uses.
 ```bash
 cp .env.example .env
 ```
@@ -75,7 +75,7 @@ bun run src/index.ts run Do foo work
 
 ## Runtime Options
 
-- `--model <provider/model>`: namespaced model id (default: `openai/gpt-5.3-codex`)
+- `--model <provider/model>`: namespaced model id resolved through `@mariozechner/pi-ai` (default: `openai/gpt-5.3-codex`)
 - `--max-turns <n>`: positive integer session turn cap (default: `8`)
 
 Examples:
@@ -91,11 +91,11 @@ Examples:
 
 ## Environment
 
-- Required for OpenAI models: `OPENAI_API_KEY`
-- Required for Anthropic models: `ANTHROPIC_API_KEY`
+- Required API key env vars are provider-dependent and handled by `@mariozechner/pi-ai`.
+- Common examples: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`.
 - Primary MCP config entrypoint: `MCP_CONFIG_PATH` (path to JSON config file)
 - Optional profile variables are defined by the active profile's `env` parser.
-- The selected model client is created at startup, so the required API key must be set before entering REPL.
+- The selected model/provider is resolved at startup, so required provider credentials must be set before entering REPL.
 
 ## MCP Configuration
 
