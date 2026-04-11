@@ -6,11 +6,18 @@ export type ProfileEnvConfig<Env> = {
 	parse?: (input: Record<string, string | undefined>) => Env;
 };
 
+export type ProfileProviderDependencies = {
+	skillsProvider?: ToolProvider;
+};
+
 export type AgentProfile<Context, Env> = {
 	id: string;
 	instructions: string;
 	deriveContext: (input: { userText: string; history: string[] }) => Context;
-	createProviders: (env: Env) => Promise<ToolProvider[]>;
+	createProviders: (
+		env: Env,
+		dependencies?: ProfileProviderDependencies,
+	) => Promise<ToolProvider[]>;
 	policies: ToolPolicy[];
 	env: ProfileEnvConfig<Env>;
 };
