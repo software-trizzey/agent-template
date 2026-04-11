@@ -36,6 +36,8 @@ Default to using Bun instead of Node.js.
 
 Use `bun test` to run tests.
 
+Prefer red-green TDD for non-trivial changes: write a failing test first, implement the minimal change to pass, then refactor safely.
+
 After completing code changes, run `bun run check --write`.
 
 ```ts#index.test.ts
