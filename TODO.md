@@ -52,3 +52,57 @@
 
 - [x] Update docs (`README.md` and `docs/SKILLS_SPEC.md`) to document rich YAML frontmatter support plus strict post-parse validation.
 - [x] Run final verification: `bun test`, `bun run typecheck`, `bun run check --write`.
+
+## REPL TUI refactor (cel-tui, red-green TDD order)
+
+- [ ] Slice R0 (RED): Add tests for a command catalog constant covering canonical commands, aliases, precedence, argument shape, and unknown-command suggestion inputs.
+- [ ] Slice R0 (GREEN): Implement `src/core/cli/repl/command-catalog.ts` exporting a single typed command list for built-ins and skill-alias strategy.
+- [ ] Slice R0 (REFACTOR): Make parser/dispatcher/help text consume the catalog and remove duplicated command literals.
+
+- [ ] Slice R1 (RED): Add command parser parity tests for `/help`, `/reset`, `/skills`, `/skill <name>`, `/<skill-name>`, unknown slash suggestions, `/exit`, `:q`, and prompt passthrough.
+- [ ] Slice R1 (GREEN): Implement `src/core/cli/repl/commands.ts` with built-in precedence and skill-alias resolution parity.
+- [ ] Slice R1 (REFACTOR): Remove duplicate command parsing paths and centralize parser fixtures/builders.
+
+- [ ] Slice R2 (RED): Add reducer tests for `prompt_submitted`, `prompt_started`, `activity_received`, `prompt_succeeded`, `prompt_failed`, `session_reset`, and deterministic transcript row ordering.
+- [ ] Slice R2 (GREEN): Implement `src/core/cli/repl/types.ts` and `src/core/cli/repl/reducer.ts` with unified transcript row variants (`user|assistant|activity|system|error`).
+- [ ] Slice R2 (REFACTOR): Extract event-to-row mapping helpers and normalize reducer test utilities.
+
+- [ ] Slice R3 (RED): Add controller tests with fake renderer port for prompt execution, history updates, reset/exit handling, `/skills`, `/skill`, alias activation, and no normal prompt flow for skill activation.
+- [ ] Slice R3 (GREEN): Implement `src/core/cli/repl/controller.ts` to own side effects, intent routing, and runtime callback wiring.
+- [ ] Slice R3 (REFACTOR): Split controller lifecycle helpers (submit, command, activity, shutdown) into focused functions.
+
+- [ ] Slice R4 (RED): Add inline activity integration tests ensuring `onActivity` events interleave correctly with prompt lifecycle (`prompt_started` -> `activity_received*` -> `prompt_succeeded|prompt_failed`).
+- [ ] Slice R4 (GREEN): Route REPL-mode runtime `onActivity` through controller/reducer instead of direct stdout writes.
+- [ ] Slice R4 (REFACTOR): Consolidate activity formatting through existing `formatActivityEvent` semantics.
+
+- [ ] Slice R5 (RED): Add renderer-port contract tests for `start(initialState, handlers)`, `render(nextState)`, `stop()`, handler emission, and stop idempotency.
+- [ ] Slice R5 (GREEN): Implement `src/core/cli/repl/ui/port.ts` and fake adapter contract harness.
+- [ ] Slice R5 (REFACTOR): Keep port surface minimal and move non-contract logic out of tests.
+
+- [ ] Slice R6 (RED): Add cel adapter tests for intent emission, TextInput Enter interception (submit vs newline), key bubbling semantics (`false` bubbles, `undefined` consumes), and render updates.
+- [ ] Slice R6 (GREEN): Implement `src/core/cli/repl/ui/cel/renderer.ts` (optionally `view.ts`) using cel lifecycle (`cel.init`/`cel.viewport`/`cel.render`/`cel.stop`).
+- [ ] Slice R6 (REFACTOR): Separate pure view composition from terminal lifecycle glue.
+
+- [ ] Slice R7 (RED): Add shutdown-path tests proving renderer calls `cel.stop()` before any `process.exit()` path (`/exit`, `:q`, signal/error cleanup hooks used by REPL path).
+- [ ] Slice R7 (GREEN): Wire explicit shutdown sequencing in controller/adapter and preserve one-shot mode behavior.
+- [ ] Slice R7 (REFACTOR): Centralize shutdown policy in one helper used by all exit paths.
+
+- [ ] Slice R8 (RED): Add CLI composition tests verifying default command uses REPL controller + cel renderer and `run "<prompt>"` path remains unchanged.
+- [ ] Slice R8 (GREEN): Swap CLI wiring in `src/core/cli/index.ts` / `src/index.ts` to new REPL stack.
+- [ ] Slice R8 (REFACTOR): Remove obsolete readline loop code and dead wiring.
+
+- [ ] Slice R9 (RED): Add review-packet acceptance tests/checklist for required demo artifacts and scenario coverage.
+- [ ] Slice R9 (GREEN): Generate end-to-end review packet artifacts (`.cast`, `.mp4`, key screenshots, `REVIEW_PACKET.md`) and add static `review.html` that embeds video + ordered screenshot gallery.
+- [ ] Slice R9 (REFACTOR): Standardize artifact naming, timestamped run directories, and reusable demo script for deterministic playback speed.
+
+- [ ] Slice R9.1: Add `docs/review/REVIEW_PACKET_TEMPLATE.md` with evidence mapping table (criterion -> artifact -> timestamp/screenshot).
+- [ ] Slice R9.2: Create deterministic demo runner (tmux-based, human-speed delays, fixed 120x36 terminal) for reproducible `.cast` capture.
+- [ ] Slice R9.3: Add media pipeline script to export `.cast` to `.mp4` and validate output file presence.
+- [ ] Slice R9.4: Capture and store required screenshots (`01`-`08`) from the same demo run used for video.
+- [ ] Slice R9.5: Implement portable `review.html` (no build step, relative paths, responsive layout, embedded video, labeled screenshot gallery).
+- [ ] Slice R9.6: Add review artifact validator script that checks required files/paths and fails fast on missing artifacts.
+- [ ] Slice R9.7: Produce final run folder `artifacts/review/repl-tui-<timestamp>/` and complete `REVIEW_PACKET.md` with pass/fail outcomes.
+
+- [ ] Compatibility checks: add/manual-test checklist for Kitty-first behavior, `tmux` with `set -s extended-keys on`, and documented legacy best-effort limits.
+- [ ] Docs: update `README.md` REPL section (keybindings, inline activity behavior, tmux setting, exit behavior, and any title policy if `cel.setTitle` is introduced).
+- [ ] Run final verification: `bun test`, `bun run typecheck`, `bun run check --write`.
