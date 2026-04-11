@@ -92,6 +92,16 @@ Examples:
 - `/<skill-name>` (alias for `/skill <name>`)
 - `/exit` or `:q`
 
+## REPL TUI Notes
+
+- Renderer: interactive REPL uses `@cel-tui/core` via `src/core/cli/repl/ui/cel/*`.
+- Input behavior: `Enter` submits the current prompt.
+- Exit behavior: `/exit`, `:q`, `Ctrl+C`, and `Ctrl+Q` trigger clean shutdown (`cel.stop()` before process exit).
+- Inline activity: runtime `onActivity` events are rendered in the transcript as `activity>` rows between prompt start/finish.
+- tmux compatibility: run with `set -s extended-keys on` (recommended for first-class behavior), and use a fixed viewport like `120x36` for reproducible captures.
+- Terminal compatibility: Kitty-compatible terminals are first-class; legacy terminals are best-effort.
+- Terminal title policy: no explicit title management is currently applied (`cel.setTitle` is not used).
+
 ## Skill Frontmatter
 
 - `SKILL.md` must start with YAML frontmatter delimited by `---`.
