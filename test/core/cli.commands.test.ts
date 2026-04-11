@@ -2,6 +2,18 @@ import { describe, expect, test } from "bun:test";
 import { resolveReplCommand } from "../../src/core/cli/commands";
 
 describe("resolveReplCommand", () => {
+	test("parses /reset and exit aliases", () => {
+		expect(
+			resolveReplCommand({ raw: "/reset", availableSkillNames: [] }),
+		).toEqual({ type: "reset" });
+		expect(
+			resolveReplCommand({ raw: "/exit", availableSkillNames: [] }),
+		).toEqual({ type: "exit" });
+		expect(resolveReplCommand({ raw: ":q", availableSkillNames: [] })).toEqual({
+			type: "exit",
+		});
+	});
+
 	test("keeps built-in command precedence", () => {
 		const command = resolveReplCommand({
 			raw: "/help",
@@ -58,5 +70,17 @@ describe("resolveReplCommand", () => {
 		});
 
 		expect(command.type).toBe("skills_list");
+	});
+
+	test("passes non-slash input through as prompt", () => {
+		const command = resolveReplCommand({
+			raw: " write docs ",
+			availableSkillNames: ["writer"],
+		});
+
+		expect(command).toEqual({
+			type: "prompt",
+			value: "write docs",
+		});
 	});
 });
