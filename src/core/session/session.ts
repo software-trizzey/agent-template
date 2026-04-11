@@ -13,23 +13,13 @@ import type {
 	SessionResult,
 } from "../types/runtime";
 import type { ToolRegistry } from "../types/tools";
+import { generateToolCallId, serializeToolResult } from "./toolHistory";
 
 function appendMessage(
 	history: SessionMessage[],
 	message: SessionMessage,
 ): void {
 	history.push(message);
-}
-
-function serializeToolResult(toolName: string, result: unknown): string {
-	return JSON.stringify({
-		toolName,
-		result,
-	});
-}
-
-function generateToolCallId(): string {
-	return `call_${crypto.randomUUID().replaceAll("-", "")}`;
 }
 
 function emitActivity(
