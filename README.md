@@ -87,13 +87,26 @@ Examples:
 
 - `/help`
 - `/reset` (clears in-memory session history)
+- `/skills` (lists discovered skills)
+- `/skill <name>` (activates a skill)
+- `/<skill-name>` (alias for `/skill <name>`)
 - `/exit` or `:q`
+
+## Skill Frontmatter
+
+- `SKILL.md` must start with YAML frontmatter delimited by `---`.
+- Frontmatter supports standard YAML structures (lists, nested objects, multiline scalars).
+- Validation remains strict after parse: `name` and `description` are required and constrained.
+- Unknown frontmatter fields are preserved for downstream skill logic.
 
 ## Environment
 
 - Required API key env vars are provider-dependent and handled by `@mariozechner/pi-ai`.
 - Common examples: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`.
 - Primary MCP config entrypoint: `MCP_CONFIG_PATH` (path to JSON config file)
+- Skills are discovered from `./skills` (project) and `~/.agents/skills` (user).
+- `DEFAULT_PROFILE_ALLOW_PROJECT_SKILLS` controls project skill discovery (`true` by default).
+- `DEFAULT_PROFILE_USER_SKILLS_ROOT` optionally overrides the user skills root.
 - Optional profile variables are defined by the active profile's `env` parser.
 - The selected model/provider is resolved at startup, so required provider credentials must be set before entering REPL.
 

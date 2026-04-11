@@ -173,10 +173,10 @@ Provider composition requirements:
 
 Parser and metadata policy:
 - required fields: `name`, `description`
-- YAML parsing is strict
+- YAML parsing is strict and supports full YAML frontmatter (lists, nested objects, multiline scalars)
 - unknown frontmatter fields are allowed and preserved
 - missing/empty required fields: skip with warning
-- invalid `SKILL.md` parse: skip with warning
+- invalid `SKILL.md` parse (including non-object top-level frontmatter): skip with warning
 
 Metadata constraints:
 - `name`: 1-64 chars, lowercase letters/numbers/hyphen/underscore (`^[a-z0-9_-]+$`)
