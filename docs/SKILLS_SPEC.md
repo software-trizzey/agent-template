@@ -7,7 +7,8 @@ This document defines how Agent Skills (https://agentskills.io/llms.txt) will be
 It covers:
 - what skills are
 - how this project will support discovery, activation, and execution
-- high-level implementation design
+- architecture and runtime contracts
+- validation and trust model
 - test strategy
 
 ---
@@ -32,31 +33,31 @@ Skills are designed for progressive disclosure:
 
 ---
 
+## Runtime Constraints
+
+The spec must align with these current runtime behaviors:
+
+- Profile instructions are currently static strings (`src/core/types/profile.ts`, `src/profiles/default/index.ts`).
+- Session tool history follows an assistant tool-call message followed by a tool result message (`src/core/session/session.ts`).
+- Tool names must be globally unique in the registry, or startup fails (`src/core/tools/registry.ts`).
+- Default profile local provider currently returns no local tools (`src/profiles/default/index.ts`).
+
+These constraints are normative inputs for the design below.
+
+---
+
 ## Integration Goals
 
 - Add standards-aligned skill support without disrupting existing runtime architecture.
 - Keep orchestration thin and reusable.
 - Reuse one activation pipeline for both model-driven and user-driven activation.
-- Ensure `/skill` injects a synthetic tool message so history format matches model tool activation.
+- Make `/skill` history injection semantically equivalent to model-triggered `activate_skill` tool usage.
 
 ## Non-Goals (Initial Phase)
 
 - full skill marketplace/remote install support
 - complex permission UX
 - automatic subagent delegation for skills
-
----
-
-## Current Project Fit
-
-The codebase already has strong seams that align with skills support:
-
-- profile-based composition (`src/profile.ts`, `src/profiles/default/index.ts`)
-- tool provider and registry abstractions (`src/core/types/tools.ts`, `src/core/tools/registry.ts`)
-- session loop with tool-call history (`src/core/session/session.ts`)
-- MCP integration for external tools (`src/core/mcp/*`)
-
-This makes skills a natural extension rather than a rewrite.
 
 ---
 
@@ -72,12 +73,19 @@ Responsibilities:
 - resolve collisions with deterministic precedence
 - expose catalog for prompt disclosure and lookup by name for activation
 
-Planned scan scopes:
+Scan scopes:
 - project-level skills path(s)
 - user-level skills path(s)
 
-Collision rule:
-- project-level skill overrides user-level skill when names collide
+Deterministic scan order:
+1. project roots in declared order
+2. user roots in declared order
+3. lexical path order within each root
+
+Collision and duplicate rules:
+- cross-scope collision: project skill overrides user skill by `name`
+- same-scope collision: first discovered skill wins, later duplicates are skipped with warning
+- reserved-name conflict with runtime tools is disallowed and skipped with warning
 
 ### 2) Skill Activation Service
 
@@ -87,7 +95,7 @@ Responsibilities:
 - activate by skill name
 - produce normalized activation payload
 - wrap content in an identifiable block: `<skill_content name="...">...</skill_content>`
-- optionally include skill directory and resource listing metadata
+- optionally include skill directory and resource listing metadata (bounded)
 
 All activation interfaces call this same service.
 
@@ -104,50 +112,118 @@ This enables skills even without filesystem MCP.
 
 ### 4) User-Driven Activation
 
-Add REPL command: `/skill <name>`.
+Add REPL skill command surfaces:
+- `/skills` lists discovered skills for quick selection
+- `/skill <name>` activates a skill explicitly
+- `/<skill-name>` is a convenience alias for `/skill <skill-name>`
 
 Behavior:
-- calls `SkillActivator.activate(name)`
-- injects the result into session history as a synthetic `tool` message
-- keeps message shape consistent with model-triggered tool activation
+- all activation forms call `SkillActivator.activate(name)`
+- all activation forms inject a synthetic assistant tool-call message and a synthetic tool-result message into history
+- all activation forms use the same `toolCall.id` and tool name (`activate_skill`) used by model-driven calls
 
-This ensures one behavioral path and avoids dual semantics.
+Command routing and precedence:
+- built-in REPL commands take precedence (`/help`, `/reset`, `/exit`, `:q`)
+- if input begins with `/` and is not a built-in, resolve as direct skill alias
+- `/skill <name>` remains the canonical explicit form for diagnostics and tests
+- unknown slash command should return a clear error and suggest closest skill/built-in matches
+
+Canonical synthetic history contract (normative):
+1. assistant message: `role="assistant"`, `content=""`, `toolCall={ id, name: "activate_skill", args }`
+2. tool message: `role="tool"`, `name=<same id>`, `content=<serialized tool result envelope>`
+
+Tool-only injection is not allowed because it can produce unmatched tool outputs.
 
 ### 5) Skill Catalog Disclosure
 
-At session setup, append a compact `<available_skills>` block to runtime instructions when skills exist.
+At prompt execution time, compose runtime instructions from:
+- base profile instructions
+- compact `<available_skills>` block when skills exist
 
-Catalog includes:
+Catalog entry fields:
 - `name`
 - `description`
 - `location` (path to `SKILL.md`)
 
 If no skills are discovered, omit the block entirely.
 
+### 6) Instruction Composition Seam
+
+Add an explicit instruction composition function (for example, `composeInstructions`) rather than mutating profile constants.
+
+Contract:
+- input: `baseInstructions`, `availableSkillsCatalog`
+- output: single instruction string passed to session runner
+- empty catalog returns `baseInstructions` unchanged
+
 ---
 
-## High-Level Implementation Plan
+## Provider Integration
+
+Add a dedicated local skills provider (for example, `createSkillsToolProvider`) that contributes `activate_skill`.
+
+Provider composition requirements:
+- skills local provider must be composed in default profile provider list
+- provider order must be deterministic
+- duplicate tool names must be prevented before registry build
+
+---
+
+## Validation, Limits, and Encoding Policy
+
+Parser and metadata policy:
+- required fields: `name`, `description`
+- YAML parsing is strict and supports full YAML frontmatter (lists, nested objects, multiline scalars)
+- unknown frontmatter fields are allowed and preserved
+- missing/empty required fields: skip with warning
+- invalid `SKILL.md` parse (including non-object top-level frontmatter): skip with warning
+
+Metadata constraints:
+- `name`: 1-64 chars, lowercase letters/numbers/hyphen/underscore (`^[a-z0-9_-]+$`)
+- `description`: 1-280 chars after trim
+
+Payload limits:
+- max skill body bytes in activation payload (bounded; truncation allowed)
+- max resource listing entries (bounded)
+- truncation must add a clear marker in output
+
+Encoding and wrapper safety:
+- skill `name` must be escaped/sanitized before insertion in tagged blocks
+- embedded body content must be safely wrapped so malformed tags cannot break delimiters
+
+Diagnostics:
+- warnings should include machine-parseable code and human-readable message
+- warnings should include source path when available
+
+---
+
+## Trust Model (Initial Phase)
+
+Minimum trust controls are in-scope now:
+- only discover from explicitly configured allowed roots
+- env flag to enable/disable project-level skills
+- warn when skipping paths outside allowed roots
+
+Still out of scope for this phase:
+- interactive approval UX
+- signed skill verification
+- remote marketplace trust framework
+
+---
+
+## High-Level Implementation Sequence
 
 1. Add `src/core/skills/types.ts`.
-2. Add `src/core/skills/parser.ts` (`SKILL.md` parsing).
-3. Add `src/core/skills/registry.ts` (discovery, index, catalog, lookup).
-4. Add `src/core/skills/activator.ts` (activation payload generation).
+2. Add `src/core/skills/parser.ts` (`SKILL.md` parsing + validation policy).
+3. Add `src/core/skills/registry.ts` (discovery, deterministic indexing, catalog, lookup).
+4. Add `src/core/skills/activator.ts` (activation payload generation + bounds + safety).
 5. Add `src/core/skills/tool.ts` (`activate_skill` local tool adapter).
-6. Integrate skills provider into default profile provider composition.
-7. Add catalog injection into runtime instructions.
-8. Extend REPL command parser/handler with `/skill <name>`.
-9. Add synthetic tool message injection helper shared by the REPL path.
-10. Update docs and examples (`README.md`, optional `.env.example` if needed).
-
----
-
-## Validation and Parsing Policy (Initial)
-
-- required fields: `name`, `description`
-- missing/empty `description`: skip skill with warning
-- invalid `SKILL.md` parse: skip skill with warning
-- keep deterministic behavior and clear diagnostics
-- start pragmatic on strictness, tighten later as needed
+6. Add local skills provider composition in `src/profiles/default/index.ts`.
+7. Add instruction composer and wire catalog injection at runtime prompt execution.
+8. Extend REPL command parser/handler with `/skills`, `/skill <name>`, and `/<skill-name>` alias routing.
+9. Add shared synthetic assistant+tool history injection helper for all REPL activation forms.
+10. Add trust root/env wiring and warning diagnostics.
+11. Update docs and examples (`README.md`, optional `.env.example` if needed).
 
 ---
 
@@ -156,17 +232,21 @@ If no skills are discovered, omit the block entirely.
 ### Unit Tests
 
 - `skills.parser`
-  - valid/invalid frontmatter
+  - valid/invalid strict frontmatter parse
   - body extraction
-  - optional fields pass-through
+  - required field validation
+  - name/description bounds and format
 - `skills.registry`
-  - discovery behavior
-  - collision precedence
+  - deterministic discovery order
+  - cross-scope and same-scope collision behavior
+  - reserved-name conflict handling
   - catalog shape correctness
 - `skills.activator`
   - activation success path
   - unknown skill failure
   - wrapping format correctness
+  - truncation and marker behavior
+  - escaping/sanitization behavior
 
 ### Adapter Tests
 
@@ -177,16 +257,21 @@ If no skills are discovered, omit the block entirely.
 - REPL `/skill` adapter
   - command parsing
   - activation call path
+  - synthetic assistant+tool pair injection
   - graceful unknown-skill handling
+  - alias routing parity (`/<skill-name>` and `/skill <name>`)
+  - `/skills` listing behavior
 
 ### Integration Tests
 
 Primary invariant:
-- model-driven activation and `/skill` activation produce equivalent synthetic `tool` history message shape
+- model-driven activation and `/skill` activation produce equivalent assistant-tool-call + tool-result history message shape
+- model-driven activation, `/skill <name>`, and `/<skill-name>` produce equivalent assistant-tool-call + tool-result history message shape
 
 Also verify:
 - catalog appears only when skills are available
 - no regressions in session/tool registry behavior
+- trust root gating is enforced
 
 ### Fixtures
 
@@ -194,23 +279,29 @@ Add small skill fixtures under `test/fixtures/skills/`:
 - valid skill
 - malformed YAML
 - missing required fields
+- duplicate names (same scope)
+- duplicate names (project over user)
+- XML-unsafe/invalid names
 - skill with `references/` and/or `scripts/`
+- oversized skill body/resources fixture
+- fixture names that collide with built-in REPL commands
 
 ---
 
 ## Risks and Mitigations
 
-- Risk: divergence between model and user activation paths  
-  Mitigation: single `SkillActivator` and shared injection format
-- Risk: prompt bloat from catalog  
-  Mitigation: metadata-only catalog, no eager full-skill injection
-- Risk: untrusted project skill instructions  
-  Mitigation: add trust gating in a follow-up phase if needed
+- Risk: divergence between model and user activation paths
+  Mitigation: single `SkillActivator` and shared synthetic assistant+tool history contract
+- Risk: prompt bloat from catalog and activation payloads
+  Mitigation: metadata-only catalog, bounded activation payloads, truncation markers
+- Risk: untrusted project skill instructions
+  Mitigation: allowed-root trust gating and explicit env controls in phase 1
 
 ---
 
-## Open Decisions
+## Chosen Defaults
 
-- re-activation behavior: always re-inject vs session dedupe
-- YAML strictness: strict-only vs lenient fallback parsing
-- resource listing size limits in activation payload
+- re-activation behavior: always re-inject activation output (no session dedupe in phase 1)
+- YAML strictness: strict parse, skip invalid files with warnings
+- resource listing limits: bounded with explicit truncation marker
+- command UX: keep `/skill <name>` as canonical explicit command, support `/<skill-name>` as alias, and keep `/skills` for discovery

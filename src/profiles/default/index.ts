@@ -1,4 +1,5 @@
 import { createMcpToolProviderFromPath } from "../../core/mcp";
+import { createSkillsRuntime } from "../../core/skills/runtime";
 import type { AgentProfile, ToolProvider } from "../../core/types";
 
 type DefaultProfileContext = {
@@ -7,6 +8,8 @@ type DefaultProfileContext = {
 
 type DefaultProfileEnv = {
 	allowExternalTools: boolean;
+	allowProjectSkills: boolean;
+	userSkillsRoot?: string;
 	mcpConfigPath?: string;
 };
 
@@ -40,17 +43,6 @@ function parseBoolean(value: string | undefined, fallback: boolean): boolean {
 	return fallback;
 }
 
-function createEmptyLocalProvider(): ToolProvider {
-	return {
-		async listTools() {
-			return [];
-		},
-		async shutdown() {
-			return;
-		},
-	};
-}
-
 export const defaultProfile: AgentProfile<
 	DefaultProfileContext,
 	DefaultProfileEnv
@@ -63,8 +55,26 @@ export const defaultProfile: AgentProfile<
 			latestUserText: input.userText.trim(),
 		};
 	},
-	async createProviders(env): Promise<ToolProvider[]> {
-		const providers: ToolProvider[] = [createEmptyLocalProvider()];
+	async createProviders(env, dependencies): Promise<ToolProvider[]> {
+		const providers: ToolProvider[] = [];
+		if (dependencies?.skillsProvider !== undefined) {
+			providers.push(dependencies.skillsProvider);
+		} else {
+			const skillsRuntime = await createSkillsRuntime({
+				projectRoot: process.cwd(),
+				allowProjectSkills: env.allowProjectSkills,
+				userSkillRoot: env.userSkillsRoot,
+			});
+			for (const warning of skillsRuntime.registry.warnings) {
+				const sourceSuffix =
+					warning.sourcePath === undefined ? "" : ` (${warning.sourcePath})`;
+				process.stderr.write(
+					`[skills] ${warning.code} ${warning.message}${sourceSuffix}\n`,
+				);
+			}
+			providers.push(skillsRuntime.provider);
+		}
+
 		if (!env.allowExternalTools) {
 			return providers;
 		}
@@ -86,12 +96,20 @@ export const defaultProfile: AgentProfile<
 	env: {
 		defaults: {
 			allowExternalTools: true,
+			allowProjectSkills: true,
 		},
 		parse(input): DefaultProfileEnv {
 			return {
 				allowExternalTools: parseBoolean(
 					input.DEFAULT_PROFILE_ALLOW_EXTERNAL_TOOLS,
 					true,
+				),
+				allowProjectSkills: parseBoolean(
+					input.DEFAULT_PROFILE_ALLOW_PROJECT_SKILLS,
+					true,
+				),
+				userSkillsRoot: parseOptionalString(
+					input.DEFAULT_PROFILE_USER_SKILLS_ROOT,
 				),
 				mcpConfigPath: parseOptionalString(input.MCP_CONFIG_PATH),
 			};

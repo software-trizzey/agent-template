@@ -20,7 +20,11 @@ export type {
 	ToolPolicyDecision,
 	ToolPolicyInput,
 } from "./policy";
-export type { AgentProfile, ProfileEnvConfig } from "./profile";
+export type {
+	AgentProfile,
+	ProfileEnvConfig,
+	ProfileProviderDependencies,
+} from "./profile";
 export type {
 	RuntimeConfig,
 	SessionInput,

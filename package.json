@@ -26,6 +26,7 @@
 		"@mariozechner/pi-ai": "^0.66.1",
 		"@modelcontextprotocol/sdk": "^1.29.0",
 		"cac": "^7.0.0",
+		"yaml": "^2.8.3",
 		"zod": "^4.3.6"
 	}
 }
