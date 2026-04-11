@@ -30,9 +30,9 @@
 - [x] Slice 7 (GREEN): Implement REPL command routing and shared synthetic history injection helper.
 - [x] Slice 7 (REFACTOR): Centralize slash-command resolution and activation plumbing.
 
-- [ ] Slice 8 (RED): Add integration tests proving history-shape parity across model-driven activation, `/skill <name>`, and `/<skill-name>`.
-- [ ] Slice 8 (GREEN): Close integration gaps and enforce parity contract.
-- [ ] Slice 8 (REFACTOR): Consolidate fixture setup and reusable history assertions.
+- [x] Slice 8 (RED): Add integration tests proving history-shape parity across model-driven activation, `/skill <name>`, and `/<skill-name>`.
+- [x] Slice 8 (GREEN): Close integration gaps and enforce parity contract.
+- [x] Slice 8 (REFACTOR): Consolidate fixture setup and reusable history assertions.
 
 - [x] Update docs (`README.md`) for `/skills`, `/skill <name>`, and alias behavior.
 - [x] Add/update fixture set under `test/fixtures/skills/` for malformed, duplicate, unsafe-name, and oversized cases.

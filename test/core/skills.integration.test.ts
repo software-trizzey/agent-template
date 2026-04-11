@@ -1,11 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import { createCliPromptHandler } from "../../src/core/cli";
 import { createSessionRunner } from "../../src/core/session";
-import { appendToolHistoryPair } from "../../src/core/session/toolHistory";
 import { SkillActivator } from "../../src/core/skills/activator";
 import { createActivateSkillTool } from "../../src/core/skills/tool";
 import type { SkillRegistry } from "../../src/core/skills/types";
 import { buildToolRegistry } from "../../src/core/tools/registry";
-import { toToolResultSuccess } from "../../src/core/tools/result";
 import type { SessionMessage } from "../../src/core/types";
 import { FakeModelAdapter } from "../helpers/fakeModelAdapter";
 import { FakeToolProvider } from "../helpers/fakeToolProvider";
@@ -48,8 +47,35 @@ function createRegistry(): SkillRegistry {
 	};
 }
 
+function toActivationHistoryShape(history: SessionMessage[]): {
+	assistantRole: string;
+	toolRole: string;
+	toolName: string;
+	args: unknown;
+	callIdMatchesToolMessage: boolean;
+	serializedToolResult: unknown;
+} {
+	const assistant = history.find(
+		(message) => message.role === "assistant" && message.toolCall !== undefined,
+	);
+	const tool = history.find((message) => message.role === "tool");
+
+	if (assistant?.toolCall === undefined || tool?.name === undefined) {
+		throw new Error("Missing assistant/tool activation pair in history");
+	}
+
+	return {
+		assistantRole: assistant.role,
+		toolRole: tool.role,
+		toolName: assistant.toolCall.name,
+		args: assistant.toolCall.args,
+		callIdMatchesToolMessage: assistant.toolCall.id === tool.name,
+		serializedToolResult: JSON.parse(tool.content),
+	};
+}
+
 describe("skills integration parity", () => {
-	test("model and slash activation produce equivalent assistant+tool history shape", async () => {
+	test("model, /skill, and alias activation produce equivalent assistant+tool history shape", async () => {
 		const activator = new SkillActivator({ registry: createRegistry() });
 		const activateTool = createActivateSkillTool({ activator });
 
@@ -88,40 +114,64 @@ describe("skills integration parity", () => {
 			history: [],
 		});
 
-		const modelAssistantMessage = modelResult.history.find(
-			(message) =>
-				message.role === "assistant" && message.toolCall !== undefined,
-		);
-		const modelToolMessage = modelResult.history.find(
-			(message) => message.role === "tool",
-		);
+		const slashSkillHistory: SessionMessage[] = [];
+		const slashAliasHistory: SessionMessage[] = [];
+		let runPromptCallCount = 0;
+		const runPrompt = async (
+			_prompt: string,
+			_history: SessionMessage[],
+		): Promise<{
+			output: string;
+			history: SessionMessage[];
+		}> => {
+			runPromptCallCount += 1;
+			return {
+				output: "unused",
+				history: [],
+			};
+		};
 
-		const userHistory: SessionMessage[] = [];
-		const activation = await activator.activate("writer");
-		expect(activation.ok).toBe(true);
-		if (!activation.ok) {
-			return;
-		}
+		const skillsAdapter = {
+			listSkillNames() {
+				return ["writer"];
+			},
+			listSkillSummaries() {
+				return [{ name: "writer", description: "Writes docs" }];
+			},
+			activateByName(name: string) {
+				return activator.activate(name);
+			},
+		};
 
-		appendToolHistoryPair({
-			history: userHistory,
-			toolName: "activate_skill",
-			args: { name: "writer" },
-			result: toToolResultSuccess(activation.data),
-			callId: "call_same",
+		const slashSkillHandler = createCliPromptHandler({
+			isReplMode: true,
+			history: slashSkillHistory,
+			runPrompt,
+			skills: skillsAdapter,
+		});
+		const slashAliasHandler = createCliPromptHandler({
+			isReplMode: true,
+			history: slashAliasHistory,
+			runPrompt,
+			skills: skillsAdapter,
 		});
 
-		const userAssistantMessage = userHistory[0];
-		const userToolMessage = userHistory[1];
+		await slashSkillHandler("/skill writer");
+		await slashAliasHandler("/writer");
 
-		expect(modelAssistantMessage?.role).toBe(userAssistantMessage?.role);
-		expect(modelAssistantMessage?.toolCall?.name).toBe(
-			userAssistantMessage?.toolCall?.name,
-		);
-		expect(modelAssistantMessage?.toolCall?.id).toBe(
-			userAssistantMessage?.toolCall?.id,
-		);
-		expect(modelToolMessage?.role).toBe(userToolMessage?.role);
-		expect(modelToolMessage?.name).toBe(userToolMessage?.name);
+		expect(runPromptCallCount).toBe(0);
+
+		const modelShape = toActivationHistoryShape(modelResult.history);
+		const slashSkillShape = toActivationHistoryShape(slashSkillHistory);
+		const slashAliasShape = toActivationHistoryShape(slashAliasHistory);
+
+		expect(modelShape.assistantRole).toBe("assistant");
+		expect(modelShape.toolRole).toBe("tool");
+		expect(modelShape.callIdMatchesToolMessage).toBe(true);
+		expect(slashSkillShape.callIdMatchesToolMessage).toBe(true);
+		expect(slashAliasShape.callIdMatchesToolMessage).toBe(true);
+
+		expect(slashSkillShape).toEqual(modelShape);
+		expect(slashAliasShape).toEqual(modelShape);
 	});
 });

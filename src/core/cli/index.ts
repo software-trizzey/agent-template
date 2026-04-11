@@ -5,33 +5,34 @@ import type { CliInvocation } from "./args";
 import { resolveReplCommand } from "./commands";
 import { runRepl } from "./repl";
 
-export async function runCli(input: {
-	args: CliInvocation;
+type CliSkillsAdapter = {
+	listSkillNames: () => string[];
+	listSkillSummaries: () => Array<{ name: string; description: string }>;
+	activateByName: (name: string) => Promise<
+		| {
+				ok: true;
+				data: unknown;
+		  }
+		| {
+				ok: false;
+				message: string;
+		  }
+	>;
+};
+
+export function createCliPromptHandler(input: {
+	isReplMode: boolean;
+	history: SessionMessage[];
 	runPrompt: (
 		prompt: string,
 		history: SessionMessage[],
 	) => Promise<{ output: string; history: SessionMessage[] }>;
-	skills?: {
-		listSkillNames: () => string[];
-		listSkillSummaries: () => Array<{ name: string; description: string }>;
-		activateByName: (name: string) => Promise<
-			| {
-					ok: true;
-					data: unknown;
-			  }
-			| {
-					ok: false;
-					message: string;
-			  }
-		>;
-	};
-}): Promise<void> {
-	const history: SessionMessage[] = [];
-	const isReplMode = input.args.command === "repl";
-	const handlePrompt = async (prompt: string): Promise<string> => {
-		if (!isReplMode) {
-			const result = await input.runPrompt(prompt, history);
-			history.splice(0, history.length, ...result.history);
+	skills?: CliSkillsAdapter;
+}): (prompt: string) => Promise<string> {
+	return async function handlePrompt(prompt: string): Promise<string> {
+		if (!input.isReplMode) {
+			const result = await input.runPrompt(prompt, input.history);
+			input.history.splice(0, input.history.length, ...result.history);
 			return result.output;
 		}
 
@@ -62,7 +63,7 @@ export async function runCli(input: {
 				: toToolResultFailure("BUSINESS_RULE_VIOLATION", activation.message);
 
 			appendToolHistoryPair({
-				history,
+				history: input.history,
 				toolName: "activate_skill",
 				args: { name: command.name },
 				result: toolResult,
@@ -87,10 +88,27 @@ export async function runCli(input: {
 			return "";
 		}
 
-		const result = await input.runPrompt(command.value, history);
-		history.splice(0, history.length, ...result.history);
+		const result = await input.runPrompt(command.value, input.history);
+		input.history.splice(0, input.history.length, ...result.history);
 		return result.output;
 	};
+}
+
+export async function runCli(input: {
+	args: CliInvocation;
+	runPrompt: (
+		prompt: string,
+		history: SessionMessage[],
+	) => Promise<{ output: string; history: SessionMessage[] }>;
+	skills?: CliSkillsAdapter;
+}): Promise<void> {
+	const history: SessionMessage[] = [];
+	const handlePrompt = createCliPromptHandler({
+		isReplMode: input.args.command === "repl",
+		history,
+		runPrompt: input.runPrompt,
+		skills: input.skills,
+	});
 
 	if (input.args.command === "run") {
 		const output = await handlePrompt(input.args.prompt);
