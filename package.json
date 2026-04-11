@@ -13,7 +13,11 @@
 		"test:watch": "bun test --watch",
 		"test:core": "bun test test/core",
 		"test:contracts": "bun test test/contracts test/profiles",
-		"test:evals": "bun test test/evals"
+		"test:evals": "bun test test/evals",
+		"review:demo": "bun run scripts/review/run-repl-demo.ts",
+		"review:media": "bun run scripts/review/export-cast-to-mp4.ts",
+		"review:packet": "bun run scripts/review/generate-review-packet.ts",
+		"review:validate": "bun run scripts/review/validate-artifacts.ts"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.10",
@@ -23,6 +27,7 @@
 		"typescript": "^5"
 	},
 	"dependencies": {
+		"@cel-tui/core": "^0.7.0",
 		"@mariozechner/pi-ai": "^0.66.1",
 		"@modelcontextprotocol/sdk": "^1.29.0",
 		"cac": "^7.0.0",
