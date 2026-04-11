@@ -1,9 +1,11 @@
 import { appendToolHistoryPair } from "../session";
 import { toToolResultFailure, toToolResultSuccess } from "../tools/result";
+import type { ActivityEvent } from "../types/activity";
 import type { SessionMessage } from "../types/model";
 import type { CliInvocation } from "./args";
 import { resolveReplCommand } from "./commands";
-import { runRepl } from "./repl";
+import { createReplController } from "./repl/controller";
+import { createCelReplRenderer } from "./repl/ui/cel/renderer";
 
 type CliSkillsAdapter = {
 	listSkillNames: () => string[];
@@ -101,10 +103,14 @@ export async function runCli(input: {
 		history: SessionMessage[],
 	) => Promise<{ output: string; history: SessionMessage[] }>;
 	skills?: CliSkillsAdapter;
+	setReplActivityHandler?: (
+		handler: ((event: ActivityEvent) => void) | null,
+	) => void;
+	setReplShutdownHandler?: (handler: (() => void) | null) => void;
 }): Promise<void> {
 	const history: SessionMessage[] = [];
 	const handlePrompt = createCliPromptHandler({
-		isReplMode: input.args.command === "repl",
+		isReplMode: false,
 		history,
 		runPrompt: input.runPrompt,
 		skills: input.skills,
@@ -116,21 +122,26 @@ export async function runCli(input: {
 		return;
 	}
 
-	await runRepl({
-		onPrompt: handlePrompt,
-		async onReset(): Promise<void> {
-			history.splice(0, history.length);
-		},
-		onHelp(): string {
-			return [
-				"Commands:",
-				"  /help  Show available commands",
-				"  /reset Clear session history",
-				"  /skills  List available skills",
-				"  /skill <name> Activate a skill",
-				"  /<skill-name> Activate via alias",
-				"  /exit, :q  Exit the REPL",
-			].join("\n");
-		},
+	const renderer = createCelReplRenderer();
+	const controller = createReplController({
+		renderer,
+		history,
+		runPrompt: input.runPrompt,
+		skills: input.skills,
 	});
+
+	input.setReplActivityHandler?.((event) => {
+		controller.onActivity(event);
+	});
+	input.setReplShutdownHandler?.(() => {
+		controller.shutdown();
+	});
+
+	try {
+		controller.start();
+		await controller.waitForStop();
+	} finally {
+		input.setReplActivityHandler?.(null);
+		input.setReplShutdownHandler?.(null);
+	}
 }

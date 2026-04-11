@@ -8,6 +8,7 @@ import { composeInstructions } from "./core/skills/instructions";
 import { createSkillsRuntime } from "./core/skills/runtime";
 import { buildToolRegistry } from "./core/tools/registry";
 import type { RuntimeConfig } from "./core/types";
+import type { ActivityEvent } from "./core/types/activity";
 import { activeProfile } from "./profile";
 
 async function main(): Promise<void> {
@@ -37,22 +38,30 @@ async function main(): Promise<void> {
 	});
 
 	let isShutDown = false;
+	let replShutdownHandler: (() => void) | null = null;
 	const shutdown = async (): Promise<void> => {
 		if (isShutDown) {
 			return;
 		}
 
 		isShutDown = true;
+		replShutdownHandler?.();
 		await registry.shutdown();
 	};
 
 	const uninstallShutdownHooks = installShutdownHooks(shutdown);
+	let replActivityHandler: ((event: ActivityEvent) => void) | null = null;
 
 	try {
 		const runtime: RuntimeConfig = {
 			model: args.model,
 			maxTurns: args.maxTurns,
 			onActivity(event) {
+				if (args.command === "repl" && replActivityHandler !== null) {
+					replActivityHandler(event);
+					return;
+				}
+
 				process.stdout.write(`${formatActivityEvent(event)}\n`);
 			},
 		};
@@ -63,6 +72,12 @@ async function main(): Promise<void> {
 
 		await runCli({
 			args,
+			setReplActivityHandler(handler) {
+				replActivityHandler = handler;
+			},
+			setReplShutdownHandler(handler) {
+				replShutdownHandler = handler;
+			},
 			skills: {
 				listSkillNames() {
 					return skillsRuntime.registry
