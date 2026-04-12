@@ -87,6 +87,7 @@ Examples:
 
 - `/help`
 - `/reset` (clears in-memory session history)
+- `/models` (lists available models from signed-in providers, marks current model)
 - `/skills` (lists discovered skills)
 - `/skill <name>` (activates a skill)
 - `/<skill-name>` (alias for `/skill <name>`)

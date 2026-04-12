@@ -9,11 +9,17 @@ type CelReplViewInput = {
 	onExit: () => void;
 };
 
-function formatTranscriptRow(row: TranscriptRow): {
+type NonModelTranscriptRow = Exclude<TranscriptRow, { kind: "model" }>;
+
+type TranscriptTextView = {
 	label: string;
 	text: string;
 	fgColor: "color01" | "color02" | "color04" | "color06" | "color08";
-} {
+};
+
+function formatTranscriptTextRow(
+	row: NonModelTranscriptRow,
+): TranscriptTextView {
 	if (row.kind === "user") {
 		return {
 			label: "you",
@@ -53,14 +59,43 @@ function formatTranscriptRow(row: TranscriptRow): {
 	};
 }
 
-export function createCelReplView(input: CelReplViewInput): Node {
-	const transcriptNodes = input.state.transcript.map((row) => {
-		const view = formatTranscriptRow(row);
-		return Text(`${view.label}> ${view.text}`, {
-			wrap: "word",
-			fgColor: view.fgColor,
-		});
+function createModelTranscriptNode(row: {
+	modelName: string;
+	providerName: string;
+	isCurrent: boolean;
+}): Node {
+	const currentBadge = row.isCurrent
+		? [
+				Text(" ", { fgColor: "color04" }),
+				Text("[current]", { fgColor: "color10" }),
+			]
+		: [];
+
+	return HStack({}, [
+		Text("model> ", { fgColor: "color04" }),
+		Text(row.modelName, { bold: true, fgColor: "color14" }),
+		Text(" ", { fgColor: "color04" }),
+		Text(row.providerName, { fgColor: "color08" }),
+		...currentBadge,
+	]);
+}
+
+function createTranscriptNode(row: TranscriptRow): Node {
+	if (row.kind === "model") {
+		return createModelTranscriptNode(row);
+	}
+
+	const view = formatTranscriptTextRow(row);
+	return Text(`${view.label}> ${view.text}`, {
+		wrap: "word",
+		fgColor: view.fgColor,
 	});
+}
+
+export function createCelReplView(input: CelReplViewInput): Node {
+	const transcriptNodes = input.state.transcript.map((row) =>
+		createTranscriptNode(row),
+	);
 
 	const status = input.state.isBusy ? "running" : "idle";
 

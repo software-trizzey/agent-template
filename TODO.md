@@ -77,7 +77,7 @@
 
 - [x] Slice R5 (RED): Add renderer-port contract tests for `start(initialState, handlers)`, `render(nextState)`, `stop()`, handler emission, and stop idempotency.
 - [x] Slice R5 (GREEN): Implement `src/core/cli/repl/ui/port.ts` and fake adapter contract harness.
-- [ ] Slice R5 (REFACTOR): Keep port surface minimal and move non-contract logic out of tests.
+- [x] Slice R5 (REFACTOR): Keep port surface minimal and move non-contract logic out of tests.
 
 - [x] Slice R6 (RED): Add cel adapter tests for intent emission, TextInput Enter interception (submit vs newline), key bubbling semantics (`false` bubbles, `undefined` consumes), and render updates.
 - [x] Slice R6 (GREEN): Implement `src/core/cli/repl/ui/cel/renderer.ts` (optionally `view.ts`) using cel lifecycle (`cel.init`/`cel.viewport`/`cel.render`/`cel.stop`).
@@ -108,3 +108,41 @@
 - [x] Compatibility checks: add/manual-test checklist for Kitty-first behavior, `tmux` with `set -s extended-keys on`, and documented legacy best-effort limits.
 - [x] Docs: update `README.md` REPL section (keybindings, inline activity behavior, tmux setting, exit behavior, and any title policy if `cel.setTitle` is introduced).
 - [x] Run final verification: `bun test`, `bun run typecheck`, `bun run check --write`.
+
+## `/models` REPL command + styled model rows (red-green TDD order)
+
+- [x] Slice M1 (RED): Add catalog/parser tests for `/models` command presence, built-in ordering, and slash-resolution to `models_list`.
+- [x] Slice M1 (GREEN): Implement `/models` in `src/core/cli/repl/command-catalog.ts` and `src/core/cli/repl/commands.ts` with built-in precedence preserved.
+- [x] Slice M1 (REFACTOR): Remove any duplicated `/models` literals and keep help/catalog output generation centralized.
+
+- [x] Slice M2 (RED): Add model-layer tests for listing all available models across all providers with deterministic ordering and normalized shape.
+- [x] Slice M2 (GREEN): Implement model catalog helper under `src/core/model/*` using `pi-ai` provider/model discovery behind the internal seam.
+- [x] Slice M2 (REFACTOR): Keep `pi-ai` types/details isolated to model modules; expose only internal DTOs (`modelName`, `providerName`).
+
+- [x] Slice M3 (RED): Add controller tests proving `/models` routes without `runPrompt` execution and appends model listing rows to transcript.
+- [x] Slice M3 (GREEN): Wire `/models` handling in controller + CLI composition (`listModels` adapter) and format fallback plain-text output for non-rendered paths.
+- [x] Slice M3 (REFACTOR): Share model list formatting helpers to avoid duplicate rendering/formatting logic.
+
+- [x] Slice M4 (RED): Add reducer/view tests for structured model transcript rows and mixed-style rendering semantics.
+- [x] Slice M4 (GREEN): Extend transcript row/event types and render model lines with emphasized model name (`bold`, `color14`) + de-emphasized provider (`color08`).
+- [x] Slice M4 (REFACTOR): Extract focused model-row rendering helper and keep existing row rendering paths stable.
+
+- [x] Slice M5 (RED): Add docs/test coverage updates for help output + README command list including `/models`.
+- [x] Slice M5 (GREEN): Update `README.md` and help text to document `/models` behavior (lists models from signed-in providers).
+- [x] Slice M5 (REFACTOR): Align wording/examples with current REPL command conventions and remove stale references.
+
+- [x] Run final verification: `bun test`, `bun run typecheck`, `bun run check --write`.
+
+## `/models` current-model badge UX follow-up
+
+- [x] Slice MB1 (RED): Add controller/reducer/view tests asserting the currently selected runtime model is marked in `/models` output.
+- [x] Slice MB1 (GREEN): Thread current runtime model spec into REPL models adapter and annotate matching row with a badge token.
+- [x] Slice MB1 (REFACTOR): Centralize model-id matching/normalization helper to avoid duplicated comparison logic.
+
+- [x] Slice MB2 (RED): Add view tests asserting badge visual treatment (high-contrast but secondary to model name emphasis).
+- [x] Slice MB2 (GREEN): Render a compact badge next to the active model in `src/core/cli/repl/ui/cel/view.ts` while preserving existing color hierarchy.
+- [x] Slice MB2 (REFACTOR): Extract badge render helper to keep transcript row rendering paths focused.
+
+- [x] Slice MB3 (RED): Add README/help coverage for active-model badge semantics in `/models`.
+- [x] Slice MB3 (GREEN): Update docs to explain how the active model is identified and displayed.
+- [x] Slice MB3 (REFACTOR): Keep wording consistent with existing REPL command docs.
