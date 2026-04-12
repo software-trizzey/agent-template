@@ -1,187 +1,352 @@
 # Writer Agent Spec
 
-WARNING: this is a worker in progress and subject to change based on how the general sdk update goes. I may also want to use a skill based workflow.
+## Status
+
+This spec is intentionally constrained for a v1 build in a separate repository created from `agent-template`.
 
 ## Goal
 
-Build a focused **writer agent** on top of the updated provider-agnostic agent template.
+Build a focused writer agent on top of the provider-agnostic template runtime.
 
-This project should help produce, refine, and transform written content through a narrow, opinionated workflow rather than behaving like a general-purpose assistant.
+The product should produce, refine, and transform written content through explicit workflows, not open-ended generic chat behavior.
+
+## Confirmed decisions
+
+1. Build in a separate repository created from this template.
+2. Use explicit slash workflow commands in REPL only for v1.
+3. Use local-first persistence with SQLite + Drizzle.
+4. Keep skills optional and additive, not the primary workflow engine.
+5. Treat style matching from example source material as a first-class capability.
 
 ## Assumptions
 
-This project assumes the underlying template already provides:
+The underlying template already provides:
 
-* provider-agnostic model support
-* reusable agent/session runtime support
-* CLI/runtime structure
-* profile and policy hooks
-* tool integration points
+- provider-agnostic model support
+- reusable session/runtime orchestration
+- CLI + REPL shell
+- profile and policy seams
+- tool integration seams
+- skills discovery/activation primitives
 
-This spec does not cover those template-level concerns.
-
-## Core purpose
-
-The writer agent should help with content workflows such as:
-
-* turning notes into outlines
-* turning outlines into drafts
-* rewriting content for tone or clarity
-* summarizing long-form content
-* repurposing content across channels
-* supporting iterative revision
-
-The agent should be optimized for writing quality, structure, and usability.
+This spec does not redefine template-level runtime architecture.
 
 ## Product shape
 
-This should be a **specialized writing agent**, not a generic chat agent.
+This is a specialized writing system with deterministic workflow entrypoints.
 
-It should have a constrained set of responsibilities and predictable behavior.
+The agent prioritizes:
 
-The agent should prioritize:
+- structural clarity
+- readability
+- consistency of tone
+- faithful transformations when requested
+- practical outputs ready for editing or publishing
 
-* clear structure
-* strong readability
-* consistency of tone
-* faithful transformation of source material
-* practical output that is ready to edit or publish
+## Voice and style matching (first-class)
 
-## Initial workflows
+The system must support style transfer based on user-provided exemplar writing.
 
-The first version should support a small number of explicit workflows:
+This is not optional polish. It is a core product behavior used across workflows.
 
-1. `outline`
+### Core requirements
 
-   * generate a structured outline from notes, prompts, or source text
+- Accept one or more style exemplars as direct text or saved assets.
+- Derive a reusable style profile from exemplars.
+- Apply style profile across `/outline`, `/draft`, `/rewrite`, `/summarize`, and `/repurpose`.
+- Preserve user meaning and factual content while matching style cues.
+- Allow strictness control so style influence can be soft or strong.
 
-2. `draft`
+### Determinism and safety
 
-   * generate a first draft from an outline, prompt, or source material
+- Style matching must be explicit via command flags, not hidden inference.
+- Workflow arguments override style profile when conflicts occur.
+- If requested style conflicts with factual accuracy or explicit constraints, preserve accuracy/constraints and emit a short warning.
 
-3. `rewrite`
+### V1 style controls
 
-   * revise existing content for clarity, tone, format, or brevity
+- `--style-from "..."` (inline exemplar text)
+- `--style-asset <asset-id>` (use saved exemplar)
+- `--style-profile <profile-id>` (use saved extracted profile)
+- `--style-strength low|medium|high` (default `medium`)
+- `--preserve-meaning true|false` remains available for rewrite semantics
 
-4. `summarize`
+Only one of `--style-from`, `--style-asset`, or `--style-profile` should be required per run when style matching is desired.
 
-   * compress source material into a concise and useful summary
+### Optional dedicated command (v1.1 candidate)
 
-5. `repurpose`
+- `/style-capture --input "..." --name "..."`
 
-   * transform a source asset into another content format or channel
+This command would extract and persist a reusable style profile from exemplar text.
+
+For v1, this can be implemented implicitly inside workflow handlers if a style source is supplied.
+
+## Workflow entry model (normative)
+
+All writing workflows are entered via explicit slash commands.
+
+- Built-ins (workflow commands) take precedence over skill alias commands.
+- Unknown slash behavior should keep suggestion-based diagnostics.
+- Natural-language freeform prompts are still allowed, but workflow behavior is guaranteed only for explicit commands.
+
+### V1 commands
+
+- `/outline`
+- `/draft`
+- `/rewrite`
+- `/summarize`
+- `/repurpose`
+
+## Command contracts (v1)
+
+Use a simple `--key value` shape, with quoted values where needed.
+
+### `/outline`
+
+Purpose: generate a structured outline from notes, prompt text, or source material.
+
+Required:
+
+- `--input "..."`
+
+Optional:
+
+- `--audience "..."`
+- `--goal "..."`
+- `--depth short|medium|deep` (default `medium`)
+
+Output contract:
+
+- title
+- target audience + objective (brief)
+- sectioned outline with nested bullets
+- optional suggested next drafting order
+
+### `/draft`
+
+Purpose: generate a first draft from outline or source input.
+
+Required (one of):
+
+- `--input "..."`
+- `--from-asset <asset-id>`
+
+Optional:
+
+- `--tone "..."`
+- `--length short|medium|long`
+- `--format article|post|email|memo`
+- `--title "..."`
+- `--style-from "..." | --style-asset <asset-id> | --style-profile <profile-id>`
+- `--style-strength low|medium|high`
+
+Output contract:
+
+- complete draft in requested format
+- no analysis preamble
+- markdown-oriented plain text output
+
+### `/rewrite`
+
+Purpose: revise existing content while preserving intent unless instructed otherwise.
+
+Required (all):
+
+- `--input "..."` or `--from-asset <asset-id>`
+- `--instruction "..."` (for example: clearer, tighter, more formal)
+
+Optional:
+
+- `--preserve-meaning true|false` (default `true`)
+- `--max-length <words>`
+- `--style-from "..." | --style-asset <asset-id> | --style-profile <profile-id>`
+- `--style-strength low|medium|high`
+
+Output contract:
+
+- revised text only
+- optional short change notes when `--notes true`
+
+### `/summarize`
+
+Purpose: compress material into useful concise form.
+
+Required:
+
+- `--input "..."` or `--from-asset <asset-id>`
+
+Optional:
+
+- `--length sentence|short|medium`
+- `--format paragraph|bullets`
+- `--focus "..."`
+- `--style-from "..." | --style-asset <asset-id> | --style-profile <profile-id>`
+- `--style-strength low|medium|high`
+
+Output contract:
+
+- summary only
+- includes key points; avoids filler and repetition
+
+### `/repurpose`
+
+Purpose: transform source content into another channel format.
+
+Required:
+
+- `--input "..."` or `--from-asset <asset-id>`
+- `--target tweet-thread|linkedin|newsletter|email|post`
+
+Optional:
+
+- `--tone "..."`
+- `--cta "..."`
+- `--max-length <chars|words>`
+- `--style-from "..." | --style-asset <asset-id> | --style-profile <profile-id>`
+- `--style-strength low|medium|high`
+
+Output contract:
+
+- channel-native structure
+- no unrelated expansions
+
+## Skills model (supporting, not primary)
+
+Skills remain optional overlays that shape style or constraints.
+
+Examples:
+
+- `/skill brand-voice`
+- `/skill linkedin-style`
+- `/skill founder-newsletter`
+
+Rules:
+
+- Skills do not replace workflow routing.
+- Skills can influence output tone/format within a workflow.
+- Command arguments have higher priority than skill preferences when conflicts occur.
 
 ## Input types
 
-The agent should be able to work from:
+The workflows should accept:
 
-* direct prompts
-* rough notes
-* bullet points
-* partial drafts
-* completed drafts
-* source documents
-* copied web content or references
+- direct prompts
+- rough notes
+- bullet lists
+- partial drafts
+- complete drafts
+- pasted references
+
+Document ingestion from files/URLs can be added as explicit tools later.
 
 ## Output expectations
 
 Outputs should be:
 
-* structured
-* readable
-* concise unless instructed otherwise
-* grounded in the provided input/context
-* easy to copy, edit, or publish
+- structured
+- readable
+- concise unless user requests expansion
+- grounded in provided source/context
+- copy/edit/publish friendly
 
-The agent should avoid unnecessary filler, vague phrasing, and overproduction.
+Avoid verbose preamble and generic filler.
 
-## Agent behavior
+## Revision model (v1)
+
+Use linear revision history first.
+
+- Each workflow run creates a new asset version.
+- Rewrites and repurposes link to their source asset.
+- Branching versions are out of scope for v1.
+
+## Persistence (v1 local-first)
+
+Use SQLite + Drizzle for local persistence.
+
+### Minimal schema
+
+1. `projects`
+
+- `id`
+- `name`
+- `created_at`
+
+2. `assets`
+
+- `id`
+- `project_id`
+- `type` (`source|outline|draft|rewrite|summary|repurpose`)
+- `title` (nullable)
+- `content`
+- `created_at`
+
+3. `workflow_runs`
+
+- `id`
+- `project_id`
+- `workflow` (`outline|draft|rewrite|summarize|repurpose`)
+- `input_asset_id` (nullable)
+- `output_asset_id`
+- `args_json`
+- `model_spec`
+- `created_at`
+
+4. `preferences`
+
+- `id`
+- `project_id`
+- `key`
+- `value_json`
+
+5. `style_profiles`
+
+- `id`
+- `project_id`
+- `name`
+- `source_asset_id` (nullable)
+- `source_excerpt` (nullable)
+- `profile_json` (voice traits, sentence cadence, lexical rules, formatting habits)
+- `created_at`
+
+Notes:
+
+- Keep migrations simple and explicit.
+- Persist enough metadata for reproducibility/debugging.
+- Store style source provenance so outputs can be traced to exemplar origin.
+
+## Behavior constraints
 
 The writer agent should:
 
-* stay focused on the requested writing task
-* ask for or infer structure from provided material
-* preserve meaning when rewriting unless told to change it
-* make strong formatting decisions when useful
-* avoid behaving like a broad research or coding agent unless explicitly equipped for that purpose
+- stay within writing scope
+- avoid acting like a coding or broad research agent by default
+- preserve meaning on rewrite unless told otherwise
+- make clear formatting decisions where useful
 
-## Tools
+## Non-goals (v1)
 
-The toolset should stay narrow and writing-focused.
+- coding-agent behavior
+- autonomous multi-domain tasking
+- heavy research automation
+- remote/cloud persistence
+- collaborative multi-user state
 
-Likely tool categories:
+## Implementation sequence
 
-* source/document ingestion
-* optional web research
-* note extraction
-* formatting/export helpers
-* future critique/evaluation tools
-
-The project should avoid inheriting broad coding-agent tool behavior by default.
-
-## Profile and instructions
-
-This project should define a dedicated writer profile that shapes:
-
-* tone and response behavior
-* writing constraints
-* workflow expectations
-* output formatting rules
-* tool usage rules
-
-The profile should make the agent feel like a writing tool, not a generic assistant.
-
-## Revision model
-
-The workflow should support iteration.
-
-Over time, the project should support:
-
-* draft revisions
-* rewrite passes
-* comparison between versions
-* critique and improvement loops
-* preserving important constraints across iterations
-
-## Persistence
-
-The project will likely need to store:
-
-* source material
-* outlines
-* drafts
-* revised drafts
-* task metadata
-* user instructions or style preferences
-
-Persistence can start simple, but the workflow should be designed with revision history in mind.
-
-## Non-goals
-
-This project is not intended to be:
-
-* a coding agent
-* a general-purpose autonomous agent
-* a broad research agent
-* a template/framework for every possible agent workflow
-
-The focus is writing.
-
-## Initial implementation direction
-
-1. create a dedicated writer profile
-2. define the first explicit task workflows
-3. implement `draft` first
-4. add `outline`, `rewrite`, `summarize`, and `repurpose`
-5. keep tool usage narrow and deliberate
-6. add persistence for drafts and revisions as needed
+1. Create dedicated writer profile.
+2. Add workflow slash-command parser + validators.
+3. Implement `/draft` first end-to-end (command -> run -> persist).
+4. Add `/outline`, `/rewrite`, `/summarize`, `/repurpose`.
+5. Add SQLite + Drizzle schema and repository layer.
+6. Add skill overlay precedence rules.
+7. Add evaluation fixtures for deterministic workflow checks.
 
 ## Success criteria
 
-This project is successful if:
+The project is successful if:
 
-* it feels meaningfully different from a generic assistant
-* it produces usable writing outputs for clear tasks
-* the workflows are constrained and predictable
-* the system is easy to extend with additional writing flows later
-* the agent stays focused on writing rather than expanding into unrelated behavior
+- workflow behavior is deterministic via explicit slash commands
+- outputs are usable with minimal editing for common writing tasks
+- revision history is persisted locally and traceable
+- skills improve style without replacing workflow control
+- the agent remains clearly writing-focused
