@@ -1,6 +1,7 @@
 export type ReplBuiltInCommandName =
 	| "help"
 	| "reset"
+	| "models"
 	| "skills"
 	| "skill"
 	| "exit";
@@ -26,6 +27,13 @@ export const REPL_COMMAND_CATALOG: readonly ReplBuiltInCommand[] = [
 		canonical: "/reset",
 		aliases: [],
 		description: "Clear session history",
+		argumentShape: "none",
+	},
+	{
+		name: "models",
+		canonical: "/models",
+		aliases: [],
+		description: "List available models (marks current)",
 		argumentShape: "none",
 	},
 	{

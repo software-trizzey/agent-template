@@ -7,6 +7,17 @@ function appendRow(state: ReplUiState, row: TranscriptRow): ReplUiState {
 	};
 }
 
+function appendRows(state: ReplUiState, rows: TranscriptRow[]): ReplUiState {
+	if (rows.length === 0) {
+		return state;
+	}
+
+	return {
+		...state,
+		transcript: [...state.transcript, ...rows],
+	};
+}
+
 function withBusyFlag(state: ReplUiState, isBusy: boolean): ReplUiState {
 	return {
 		...state,
@@ -88,6 +99,18 @@ export function reduceReplState(
 			transcript: [],
 			isBusy: false,
 		};
+	}
+
+	if (event.type === "models_listed") {
+		return appendRows(
+			state,
+			event.models.map((model) => ({
+				kind: "model" as const,
+				modelName: model.modelName,
+				providerName: model.providerName,
+				isCurrent: model.isCurrent,
+			})),
+		);
 	}
 
 	if (event.type === "system_message") {

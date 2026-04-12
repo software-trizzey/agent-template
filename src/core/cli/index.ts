@@ -5,6 +5,11 @@ import type { SessionMessage } from "../types/model";
 import type { CliInvocation } from "./args";
 import { resolveReplCommand } from "./commands";
 import { createReplController } from "./repl/controller";
+import {
+	formatModelListLines,
+	type ReplModelSummary,
+	toListedModels,
+} from "./repl/model-list";
 import { createCelReplRenderer } from "./repl/ui/cel/renderer";
 
 type CliSkillsAdapter = {
@@ -22,6 +27,10 @@ type CliSkillsAdapter = {
 	>;
 };
 
+type CliModelsAdapter = {
+	listModels: () => ReplModelSummary[];
+};
+
 export function createCliPromptHandler(input: {
 	isReplMode: boolean;
 	history: SessionMessage[];
@@ -30,6 +39,8 @@ export function createCliPromptHandler(input: {
 		history: SessionMessage[],
 	) => Promise<{ output: string; history: SessionMessage[] }>;
 	skills?: CliSkillsAdapter;
+	models?: CliModelsAdapter;
+	currentModelSpec?: string;
 }): (prompt: string) => Promise<string> {
 	return async function handlePrompt(prompt: string): Promise<string> {
 		if (!input.isReplMode) {
@@ -52,6 +63,15 @@ export function createCliPromptHandler(input: {
 			return summaries
 				.map((skill) => `- ${skill.name}: ${skill.description}`)
 				.join("\n");
+		}
+
+		if (command.type === "models_list") {
+			return formatModelListLines(
+				toListedModels({
+					models: input.models?.listModels() ?? [],
+					currentModelSpec: input.currentModelSpec,
+				}),
+			).join("\n");
 		}
 
 		if (command.type === "skill_activate") {
@@ -103,6 +123,8 @@ export async function runCli(input: {
 		history: SessionMessage[],
 	) => Promise<{ output: string; history: SessionMessage[] }>;
 	skills?: CliSkillsAdapter;
+	models?: CliModelsAdapter;
+	currentModelSpec?: string;
 	setReplActivityHandler?: (
 		handler: ((event: ActivityEvent) => void) | null,
 	) => void;
@@ -114,6 +136,8 @@ export async function runCli(input: {
 		history,
 		runPrompt: input.runPrompt,
 		skills: input.skills,
+		models: input.models,
+		currentModelSpec: input.currentModelSpec,
 	});
 
 	if (input.args.command === "run") {
@@ -128,6 +152,8 @@ export async function runCli(input: {
 		history,
 		runPrompt: input.runPrompt,
 		skills: input.skills,
+		models: input.models,
+		currentModelSpec: input.currentModelSpec,
 	});
 
 	input.setReplActivityHandler?.((event) => {

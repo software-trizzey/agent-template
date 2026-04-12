@@ -148,6 +148,61 @@ describe("createReplController", () => {
 		expect(lastSystemRows.at(-1)?.text).toBe("Activated skill: writer");
 	});
 
+	test("routes /models without prompt execution", async () => {
+		const history: SessionMessage[] = [];
+		let runPromptCalls = 0;
+		const fakeRenderer = createFakeRenderer();
+		const controller = createReplController({
+			renderer: fakeRenderer.renderer,
+			history,
+			runPrompt: async () => {
+				runPromptCalls += 1;
+				return {
+					output: "unused",
+					history: [],
+				};
+			},
+			models: {
+				listModels() {
+					return [
+						{
+							modelId: "claude-sonnet-4.7",
+							modelName: "Claude Sonnet",
+							providerName: "anthropic",
+						},
+						{
+							modelId: "gpt-5",
+							modelName: "GPT-5",
+							providerName: "openai",
+						},
+					];
+				},
+			},
+			currentModelSpec: "openai/gpt-5",
+		} as Parameters<typeof createReplController>[0]);
+
+		controller.start();
+		fakeRenderer.handlers?.onSubmit("/models");
+		await flushAsync();
+
+		expect(runPromptCalls).toBe(0);
+		const modelRows = (fakeRenderer.states.at(-1)?.transcript ?? []).filter(
+			(row) => row.kind === "model",
+		);
+		expect(
+			modelRows.some(
+				(row) =>
+					row.kind === "model" && row.modelName.includes("Claude Sonnet"),
+			),
+		).toBe(true);
+		expect(
+			modelRows.some(
+				(row) =>
+					row.kind === "model" && row.modelName === "GPT-5" && row.isCurrent,
+			),
+		).toBe(true);
+	});
+
 	test("renders help rows and unknown slash errors via command handling", async () => {
 		const fakeRenderer = createFakeRenderer();
 		const controller = createReplController({
@@ -200,9 +255,11 @@ describe("createReplController", () => {
 		expect(fakeRenderer.states.at(-1)?.transcript.at(-1)?.kind).toBe(
 			"activity",
 		);
-		expect(fakeRenderer.states.at(-1)?.transcript.at(-1)?.text).toContain(
-			"tool started",
-		);
+		const lastRow = fakeRenderer.states.at(-1)?.transcript.at(-1);
+		if (lastRow?.kind !== "activity") {
+			throw new Error("Expected activity row");
+		}
+		expect(lastRow.text).toContain("tool started");
 	});
 
 	test("supports external shutdown hook paths used by signals/errors", () => {

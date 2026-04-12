@@ -40,8 +40,8 @@ describe("reduceReplState", () => {
 			"activity",
 			"assistant",
 		]);
-		expect(state.transcript[0]?.text).toBe("hello");
-		expect(state.transcript[2]?.text).toBe("world");
+		expect(state.transcript[0]).toEqual({ kind: "user", text: "hello" });
+		expect(state.transcript[2]).toEqual({ kind: "assistant", text: "world" });
 	});
 
 	test("handles prompt failure and reset", () => {
@@ -83,5 +83,34 @@ describe("reduceReplState", () => {
 		expect(state.isBusy).toBe(false);
 		expect(state.isRunning).toBe(false);
 		expect(state.transcript).toEqual([{ kind: "system", text: "Commands:" }]);
+	});
+
+	test("maps model-listing events to structured model transcript rows", () => {
+		const state = reduceReplState(createInitialReplUiState(), {
+			type: "models_listed",
+			models: [
+				{ modelName: "GPT-5", providerName: "openai", isCurrent: true },
+				{
+					modelName: "Claude Sonnet",
+					providerName: "anthropic",
+					isCurrent: false,
+				},
+			],
+		} as ReplEvent);
+
+		expect(state.transcript).toEqual([
+			{
+				kind: "model",
+				modelName: "GPT-5",
+				providerName: "openai",
+				isCurrent: true,
+			},
+			{
+				kind: "model",
+				modelName: "Claude Sonnet",
+				providerName: "anthropic",
+				isCurrent: false,
+			},
+		]);
 	});
 });

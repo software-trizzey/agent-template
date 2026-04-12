@@ -72,6 +72,15 @@ describe("resolveReplCommand", () => {
 		expect(command.type).toBe("skills_list");
 	});
 
+	test("returns models listing command", () => {
+		const command = resolveReplCommand({
+			raw: "/models",
+			availableSkillNames: [],
+		});
+
+		expect(command.type).toBe("models_list");
+	});
+
 	test("passes non-slash input through as prompt", () => {
 		const command = resolveReplCommand({
 			raw: " write docs ",

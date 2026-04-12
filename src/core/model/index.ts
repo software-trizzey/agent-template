@@ -1,4 +1,6 @@
 export { createModelAdapter } from "./adapter";
+export type { AvailableModel } from "./catalog";
+export { listAvailableModels } from "./catalog";
 export { createModelAdapterFromSpec } from "./factory";
 export {
 	debugModelIo,

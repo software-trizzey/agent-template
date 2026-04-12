@@ -5,6 +5,11 @@ import type { SessionMessage } from "../../types/model";
 import { formatActivityEvent } from "../output";
 import { formatReplHelpLines } from "./command-catalog";
 import { type ReplResolvedCommand, resolveReplCommand } from "./commands";
+import {
+	formatModelListLines,
+	type ReplModelSummary,
+	toListedModels,
+} from "./model-list";
 import { reduceReplState } from "./reducer";
 import { createInitialReplUiState, type ReplEvent } from "./types";
 import type { ReplRendererPort } from "./ui/port";
@@ -22,6 +27,10 @@ type CliSkillsAdapter = {
 				message: string;
 		  }
 	>;
+};
+
+type CliModelsAdapter = {
+	listModels: () => ReplModelSummary[];
 };
 
 export type ReplController = {
@@ -79,6 +88,26 @@ function dispatchSkillsList(input: {
 			text: `- ${summary.name}: ${summary.description}`,
 		});
 	}
+}
+
+function dispatchModelsList(input: {
+	models?: CliModelsAdapter;
+	currentModelSpec?: string;
+	dispatch: (event: ReplEvent) => void;
+}): void {
+	const listedModels = toListedModels({
+		models: input.models?.listModels() ?? [],
+		currentModelSpec: input.currentModelSpec,
+	});
+
+	if (listedModels.length === 0) {
+		for (const line of formatModelListLines(listedModels)) {
+			input.dispatch({ type: "system_message", text: line });
+		}
+		return;
+	}
+
+	input.dispatch({ type: "models_listed", models: listedModels });
 }
 
 async function activateSkill(input: {
@@ -172,6 +201,8 @@ export function createReplController(input: {
 		history: SessionMessage[],
 	) => Promise<{ output: string; history: SessionMessage[] }>;
 	skills?: CliSkillsAdapter;
+	models?: CliModelsAdapter;
+	currentModelSpec?: string;
 }): ReplController {
 	let state = createInitialReplUiState();
 
@@ -214,6 +245,15 @@ export function createReplController(input: {
 		if (command.type === "skills_list") {
 			dispatchSkillsList({
 				skills: input.skills,
+				dispatch,
+			});
+			return;
+		}
+
+		if (command.type === "models_list") {
+			dispatchModelsList({
+				models: input.models,
+				currentModelSpec: input.currentModelSpec,
 				dispatch,
 			});
 			return;

@@ -5,6 +5,7 @@ export type ReplResolvedCommand =
 	| { type: "reset" }
 	| { type: "exit" }
 	| { type: "prompt"; value: string }
+	| { type: "models_list" }
 	| { type: "skills_list" }
 	| { type: "skill_activate"; name: string }
 	| { type: "unknown_slash"; value: string; suggestions: string[] };
@@ -48,6 +49,10 @@ export function resolveReplCommand(input: {
 
 	if (value === "/skills") {
 		return { type: "skills_list" };
+	}
+
+	if (value === "/models") {
+		return { type: "models_list" };
 	}
 
 	if (value.startsWith("/skill ")) {

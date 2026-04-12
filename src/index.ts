@@ -2,7 +2,7 @@ import { runCli } from "./core/cli";
 import { parseCliArgs } from "./core/cli/args";
 import { formatActivityEvent } from "./core/cli/output";
 import { installShutdownHooks } from "./core/lifecycle/shutdown";
-import { createModelAdapterFromSpec } from "./core/model";
+import { createModelAdapterFromSpec, listAvailableModels } from "./core/model";
 import { runSession } from "./core/session";
 import { composeInstructions } from "./core/skills/instructions";
 import { createSkillsRuntime } from "./core/skills/runtime";
@@ -72,6 +72,7 @@ async function main(): Promise<void> {
 
 		await runCli({
 			args,
+			currentModelSpec: args.model,
 			setReplActivityHandler(handler) {
 				replActivityHandler = handler;
 			},
@@ -92,6 +93,11 @@ async function main(): Promise<void> {
 				},
 				activateByName(name) {
 					return skillsRuntime.activator.activate(name);
+				},
+			},
+			models: {
+				listModels() {
+					return listAvailableModels();
 				},
 			},
 			async runPrompt(
